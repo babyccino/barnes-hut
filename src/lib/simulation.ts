@@ -159,6 +159,7 @@ function getBodies(...bodies: any[]): CentreOfMass[] {
   }
 }
 
+// returns [mass, massX, massY]
 export function getMassCentre(bodies: CentreOfMass[]): [number, number, number]
 export function getMassCentre(
   ...bodies: CentreOfMass[]
@@ -228,6 +229,16 @@ export function createForkAndInsertBodies(
   return bodies.reduce<Fork>((fork, body) => fork.insert(body), newFork)
 }
 
+export function createQuadAndInsertBodies(
+  x: number,
+  y: number,
+  size: number,
+  bodies: CentreOfMass[]
+): Quad {
+  const newFork = new Empty(x, y, size)
+  return bodies.reduce<Quad>((quad, body) => quad.insert(body), newFork)
+}
+
 export function update(body: Body, quad: Quad): Body {
   let netXForce = 0
   let netYForce = 0
@@ -293,6 +304,15 @@ export function eliminateOutliers(
   }
 }
 
-export const willCalc = (quad: Quad, body: CentreOfMass): boolean =>
-  !(quad instanceof Empty) &&
-  (quad instanceof Leaf || quad.size / distance(quad, body) < THETA)
+export const willCalc = (
+  quad: Quad,
+  body: CentreOfMass,
+  theta: number = THETA
+): boolean =>
+  (theta === 0 && quad instanceof Leaf) ||
+  (!(quad instanceof Empty) &&
+    (quad instanceof Leaf || quad.size / distance(quad, body) < theta))
+
+// export const willCalc = (quad: Quad, body: CentreOfMass): boolean =>
+//   quad instanceof Leaf ||
+//   (quad instanceof Fork && quad.size / distance(quad, body) < THETA)

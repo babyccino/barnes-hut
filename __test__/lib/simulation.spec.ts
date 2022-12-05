@@ -7,12 +7,12 @@ import {
   getMassCentre,
   addForce,
   addForceToBody,
-  createForkAndInsertBodies,
   MINIMUM_SIZE,
   GEE,
   DELTA,
   getBoundaries,
   eliminateOutliers,
+  createQuadAndInsertBodies,
 } from "../../src/lib/simulation"
 
 function expectEqual<T>(provided: T, expected: T): void {
@@ -306,7 +306,7 @@ describe("Simulation function", () => {
     const b3: CentreOfMass = { mass: 1, massX: 100, massY: 0 }
     const b4: CentreOfMass = { mass: 1, massX: 100, massY: 100 }
 
-    const fork = createForkAndInsertBodies(50, 50, 100, [b1, b2, b3, b4])
+    const fork = createQuadAndInsertBodies(50, 50, 100, [b1, b2, b3, b4])
 
     const body = update(b1, fork)
 
@@ -323,7 +323,7 @@ describe("Simulation function", () => {
     const totalMass = 3
     // centre of mass [avg, avg]
 
-    const fork = createForkAndInsertBodies(50, 50, 100, [b1, b2, b3, b4])
+    const fork = createQuadAndInsertBodies(50, 50, 100, [b1, b2, b3, b4])
 
     const body = update(b1, fork)
 
@@ -429,7 +429,7 @@ describe("Simulation function", () => {
     const b4: CentreOfMass = { mass: 1, massX: 87.5, massY: 37.5 }
     const nodes: CentreOfMass[] = [b1, b2, b3, b4]
     const boundaries = getBoundaries(nodes)
-    const quad = createForkAndInsertBodies(
+    const quad = createQuadAndInsertBodies(
       boundaries.centerX,
       boundaries.centerY,
       boundaries.size,
@@ -452,7 +452,7 @@ describe("Simulation function", () => {
     const b4: CentreOfMass = { mass: 1, massX: 87.5, massY: 37.5 }
     const nodes: CentreOfMass[] = [b1, b2, b3, b4]
     const boundaries = getBoundaries(nodes)
-    const quad = createForkAndInsertBodies(
+    const quad = createQuadAndInsertBodies(
       boundaries.centerX,
       boundaries.centerY,
       boundaries.size,
@@ -475,7 +475,7 @@ describe("Simulation function", () => {
     const b4: CentreOfMass = { mass: 1, massX: 87.5, massY: 37.5 }
     const nodes: CentreOfMass[] = [b1, b2, b3, b4]
     const boundaries = getBoundaries(nodes)
-    const quad = createForkAndInsertBodies(
+    const quad = createQuadAndInsertBodies(
       boundaries.centerX,
       boundaries.centerY,
       boundaries.size,

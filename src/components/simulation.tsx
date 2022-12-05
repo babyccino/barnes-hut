@@ -1,9 +1,9 @@
-import { useEffect, useRef, MutableRefObject, RefObject } from "react"
-import { Body, CentreOfMass, QuadInterface } from "../lib/interface"
-import { Line } from "../lib/lines"
+import { useEffect, useRef, useCallback } from "react"
+import { render } from "react-dom"
+import { Body, CentreOfMass } from "../lib/interface"
+import { getLines, IntervalMapCb, Line } from "../lib/lines"
 import {
-  Boundaries,
-  createForkAndInsertBodies,
+  createQuadAndInsertBodies,
   eliminateOutliers,
   Empty,
   Fork,
@@ -12,37 +12,105 @@ import {
   Leaf,
   Quad,
   standardNBody,
-  THETA,
   update,
   willCalc,
 } from "../lib/simulation"
-import { distance, rand } from "../lib/util"
+import { rand } from "../lib/util"
 
 export default function Simulation({
   nodeCount,
   running,
+  renderUncalcuatedQuads,
+  renderCalculatedQuads,
+  theta,
 }: {
   nodeCount: number
   running: boolean
+  renderUncalcuatedQuads: boolean
+  renderCalculatedQuads: boolean
+  theta: number
 }): JSX.Element {
   const svgRef = useRef<SVGSVGElement>(null)
-  const nodes = useRef<SvgNode[]>([])
-  const rectangles = useRef<Rectangle[]>([])
+  const nodesRef = useRef<SvgNode[]>([])
+  const clearablesRef = useRef<SVGElement[]>([])
   const frame = useRef<number>(-1)
 
-  useEffect(() => {
-    if (running && svgRef.current) {
-      const fun = () => {
-        if (!svgRef.current) return
-        nodes.current = animate(svgRef.current, nodes.current, {
-          nodeToRenderQuad: nodes.current[0],
-          rectangles: rectangles.current,
-        })
-        frame.current = window.requestAnimationFrame(fun)
-      }
-      frame.current = window.requestAnimationFrame(fun)
-    }
+  const clearAndRenderQuad = useCallback(() => {
+    if (!svgRef.current) return
+    const svg = svgRef.current
+    const nodes = nodesRef.current
+    if (!nodes.length) return
+    const clearables = clearablesRef.current
 
+    const boundaries = getBoundaries(nodes)
+    const quad = createQuadAndInsertBodies(
+      boundaries.centerX,
+      boundaries.centerY,
+      boundaries.size,
+      nodes
+    )
+    const focusNode = nodes[0]
+
+    clearImpermanentElements(svg, clearables)
+    animateQuadTree(svg, clearables, quad, focusNode, theta)
+    clearables.push(renderCircle(svg, focusNode, focusNode.color, 1, 5))
+  }, [theta])
+
+  useEffect(() => {
+    console.log("use effect 1")
+    if (!running && renderCalculatedQuads) {
+      clearAndRenderQuad()
+    }
+  }, [running, clearAndRenderQuad, renderCalculatedQuads])
+
+  useEffect(() => {
+    nodesRef.current.forEach((node) =>
+      node.el.setAttributeNS(
+        null,
+        "opacity",
+        (renderCalculatedQuads ? 0.3 : 1).toString()
+      )
+    )
+  }, [renderCalculatedQuads])
+
+  useEffect(() => {
+    window.cancelAnimationFrame(frame.current - 1)
+    window.cancelAnimationFrame(frame.current)
+
+    if (running && svgRef.current) {
+      const renderLoop = () => {
+        if (!svgRef.current) return
+        const svg = svgRef.current
+        const nodes = nodesRef.current
+        if (!nodes.length) return
+        const clearables = clearablesRef.current
+
+        const boundaries = getBoundaries(nodes)
+        const quad = createQuadAndInsertBodies(
+          boundaries.centerX,
+          boundaries.centerY,
+          boundaries.size,
+          nodes
+        )
+        const focusNode = nodes[0]
+
+        nodesRef.current = animatePoints(svg, nodes, quad)
+
+        // Quadtree rendering
+        clearImpermanentElements(svg, clearables)
+        animateQuadTree(svg, clearables, quad, focusNode, theta)
+
+        // Render again the node which the quadtree animation is focusing on, so it
+        // appears on top
+        clearables.push(renderCircle(svg, focusNode, focusNode.color, 1, 5))
+
+        frame.current = window.requestAnimationFrame(renderLoop)
+      }
+      frame.current = window.requestAnimationFrame(renderLoop)
+    }
+  }, [running, renderUncalcuatedQuads, renderCalculatedQuads, theta])
+
+  useEffect(() => {
     if (!running) {
       window.cancelAnimationFrame(frame.current - 1)
       window.cancelAnimationFrame(frame.current)
@@ -50,24 +118,39 @@ export default function Simulation({
   }, [running])
 
   useEffect(() => {
-    clear(svgRef, nodes, rectangles)
+    fullClear(svgRef.current, nodesRef.current, clearablesRef.current)
 
     // randomlyDistributedPoints(svgRef.current, nodes.current, nodeCount)
     if (!svgRef.current) return
-    init2Galaxies(svgRef.current, nodes.current, nodeCount)
+    init2Galaxies(svgRef.current, nodesRef.current, nodeCount)
   }, [nodeCount])
 
   return <svg ref={svgRef} width={X_MAX} height={Y_MAX} />
 }
 
-function clear(
-  svgRef: RefObject<SVGSVGElement>,
-  nodes: MutableRefObject<SvgNode[]>,
-  rectangles: MutableRefObject<Rectangle[]>
+function fullClear(
+  svg: SVGSVGElement | null,
+  nodes: SvgNode[],
+  clearables: SVGElement[]
 ): void {
-  svgRef.current && (svgRef.current.innerHTML = "")
-  nodes.current = []
-  rectangles.current = []
+  svg && (svg.innerHTML = "")
+  clearables.splice(0, clearables.length)
+  nodes.splice(0, nodes.length)
+}
+
+/**
+ * Clear elements which exist for only one frame
+ * @param svg
+ * @param clearables
+ */
+function clearImpermanentElements(
+  svg: SVGSVGElement,
+  clearables: SVGElement[]
+): void {
+  if (clearables.length) {
+    clearables.forEach((el) => svg.removeChild(el))
+    clearables.splice(0, clearables.length)
+  }
 }
 
 const range = (from: number, to: number): number[] =>
@@ -86,24 +169,40 @@ interface Rectangle {
 }
 
 const SVGNS = "http://www.w3.org/2000/svg"
+function renderCircle(
+  svg: SVGSVGElement,
+  body: CentreOfMass,
+  color: string,
+  opacity: number = 1,
+  size?: number
+): SVGCircleElement {
+  const el = document.createElementNS(SVGNS, "circle")
+  el.setAttributeNS(null, "cx", (body.massX * COORD_TRANSFORM).toString())
+  el.setAttributeNS(null, "cy", (body.massY * COORD_TRANSFORM).toString())
+  el.setAttributeNS(null, "r", (size ?? body.mass).toString())
+  el.setAttributeNS(null, "fill", color)
+  el.setAttributeNS(null, "opacity", opacity.toString())
+  svg.appendChild(el)
+  return el
+}
+
+const COORD_TRANSFORM = 500 / 2550
 function createNode(
   svg: SVGSVGElement,
-  nodes: SvgNode[],
   node: Body,
   color: string,
   opacity: number,
   blackHole: boolean = false
 ): SvgNode {
   const el = document.createElementNS(SVGNS, "circle")
-  el.setAttributeNS(null, "cx", node.massX.toString())
-  el.setAttributeNS(null, "cy", node.massY.toString())
+  el.setAttributeNS(null, "cx", (node.massX * COORD_TRANSFORM).toString())
+  el.setAttributeNS(null, "cy", (node.massY * COORD_TRANSFORM).toString())
   el.setAttributeNS(null, "r", blackHole ? "2" : node.mass.toString())
   el.setAttributeNS(null, "fill", color)
   el.setAttributeNS(null, "opacity", opacity.toString())
   svg.appendChild(el)
 
   const newNode: SvgNode = Object.assign({ el, color }, node)
-  nodes.push(newNode)
 
   return newNode
 }
@@ -114,18 +213,19 @@ function randomlyDistributedPoints(
   count: number
 ): void {
   while (count--) {
-    createNode(
-      svg,
-      nodes,
-      {
-        massX: rand(0, 2000),
-        massY: rand(0, 2000),
-        xSpeed: rand(-20, 20),
-        ySpeed: rand(-20, 20),
-        mass: 1,
-      },
-      "yellow",
-      1
+    nodes.push(
+      createNode(
+        svg,
+        {
+          massX: rand(0, 2000),
+          massY: rand(0, 2000),
+          xSpeed: rand(-20, 20),
+          ySpeed: rand(-20, 20),
+          mass: 1,
+        },
+        "yellow",
+        1
+      )
     )
   }
 }
@@ -148,19 +248,20 @@ function init2Galaxies(
     const blackHoleM = 1.0 * num
 
     // black hole
-    createNode(
-      svg,
-      nodes,
-      {
-        mass: blackHoleM,
-        massX: galaxyX,
-        massY: galaxyY,
-        xSpeed: galaxySpeedX,
-        ySpeed: galaxySpeedY,
-      },
-      "black",
-      1,
-      true
+    nodes.push(
+      createNode(
+        svg,
+        {
+          mass: blackHoleM,
+          massX: galaxyX,
+          massY: galaxyY,
+          xSpeed: galaxySpeedX,
+          ySpeed: galaxySpeedY,
+        },
+        "black",
+        1,
+        true
+      )
     )
 
     // stars
@@ -177,18 +278,19 @@ function init2Galaxies(
       const starSpeedX = galaxySpeedX + speed * Math.sin(angle + Math.PI / 2)
       const starMass = 1.0 + rand(0, 1)
 
-      createNode(
-        svg,
-        nodes,
-        {
-          mass: starMass,
-          massX: starX,
-          massY: starY,
-          xSpeed: starSpeedX,
-          ySpeed: starSpeedY,
-        },
-        grey,
-        0.3
+      nodes.push(
+        createNode(
+          svg,
+          {
+            mass: starMass,
+            massX: starX,
+            massY: starY,
+            xSpeed: starSpeedX,
+            ySpeed: starSpeedY,
+          },
+          grey,
+          0.3
+        )
       )
     }
   }
@@ -220,35 +322,17 @@ function animateStandardNBody(svg: SVGSVGElement, nodes: SvgNode[]): SvgNode[] {
   })
 }
 
-const COORD_TRANSFORM = 500 / 2550
-function animate(
+function animatePoints(
   svg: SVGSVGElement,
   nodes: SvgNode[],
-  renderQuad?: {
-    nodeToRenderQuad: SvgNode
-    rectangles: Rectangle[]
-  }
+  quad: Quad
 ): SvgNode[] {
-  const boundaries = getBoundaries(nodes)
-  const quad = createForkAndInsertBodies(
-    boundaries.centerX,
-    boundaries.centerY,
-    boundaries.size,
-    nodes
-  )
-
-  if (renderQuad && renderQuad.rectangles.length > 0) {
-    renderQuad.rectangles.forEach((rect) => svg.removeChild(rect.el))
-    renderQuad.rectangles.splice(0, renderQuad.rectangles.length)
-  }
-
   // remove svg elements if node is to be removed
   const pred = eliminateOutliers(quad)
   nodes.forEach((node) => !pred(node) && svg.removeChild(node.el))
 
   // filter nodes then animate them
-  const maxDepth = 10
-  const newNodes = nodes.filter(pred).map((node) => {
+  return nodes.filter(pred).map((node) => {
     const newNode = update(node, quad)
 
     node.el.setAttributeNS(
@@ -264,6 +348,16 @@ function animate(
 
     return Object.assign(node, newNode)
   })
+}
+
+function animateQuadTree(
+  svg: SVGSVGElement,
+  clearables: SVGElement[],
+  quad: Quad,
+  node: CentreOfMass,
+  theta: number
+): void {
+  clearImpermanentElements(svg, clearables)
 
   /**
    * The z-index of svg elements relies on the order in which they are added
@@ -271,29 +365,97 @@ function animate(
    * the tree needs to be traversed once to render the quads which will not be calculated
    * and then again for the quads which will be traversed
    *  */
-  if (renderQuad) {
-    const depthLimit = 100
-    // first traverse
+  const depthLimit = 100
 
-    const secondTrav = (traversingQuad: Quad, depth: number = 0): void => {
-      if (depth >= depthLimit) return
+  // first traverse
+  const [horizontalLines, verticalLines] = getLines(
+    quad,
+    node,
+    theta,
+    depthLimit
+  )
+  horizontalLines.forEach((intervals, y) => {
+    intervals.forEach((line) =>
+      clearables.push(renderLine(svg, line, true, y, "grey", 0.3))
+    )
+  })
+  verticalLines.forEach((intervals, x) => {
+    intervals.forEach((line) =>
+      clearables.push(renderLine(svg, line, false, x, "grey", 0.3))
+    )
+  })
 
-      if (willCalc(traversingQuad, renderQuad.nodeToRenderQuad))
-        renderRectangle(svg, renderQuad.rectangles, traversingQuad, "red", 1)
-      else if (traversingQuad instanceof Fork) {
-        secondTrav(traversingQuad.nw, depth + 1)
-        secondTrav(traversingQuad.ne, depth + 1)
-        secondTrav(traversingQuad.sw, depth + 1)
-        secondTrav(traversingQuad.se, depth + 1)
-      }
+  const secondTrav = (traversingQuad: Quad, depth: number = 0): void => {
+    if (depth >= depthLimit) return
+
+    if (traversingQuad instanceof Leaf && traversingQuad.bodies.includes(node))
+      return
+
+    if (willCalc(traversingQuad, node, theta)) {
+      if (!(traversingQuad instanceof Leaf))
+        clearables.push(renderRectangle(svg, traversingQuad, "red", 1))
+      clearables.push(renderCircle(svg, traversingQuad, "red", 1))
+      clearables.push(
+        renderLineBetweenBodies(svg, traversingQuad, node, "red", 0.5)
+      )
+    } else if (traversingQuad instanceof Fork) {
+      secondTrav(traversingQuad.nw, depth + 1)
+      secondTrav(traversingQuad.ne, depth + 1)
+      secondTrav(traversingQuad.sw, depth + 1)
+      secondTrav(traversingQuad.se, depth + 1)
     }
-    secondTrav(quad)
   }
-
-  return newNodes
+  secondTrav(quad)
 }
 
-function renderLine(line: Line): void {}
+function renderLine(
+  svg: SVGSVGElement,
+  line: Line,
+  horizontal: boolean,
+  transverse: number,
+  color: string,
+  opacity: number
+): SVGLineElement {
+  const [x1, x2] = horizontal ? line : [transverse, transverse]
+  const [y1, y2] = horizontal ? [transverse, transverse] : line
+
+  return renderLineSegment(svg, [x1, y1, x2, y2], color, opacity)
+}
+
+function renderLineBetweenBodies(
+  svg: SVGSVGElement,
+  body1: CentreOfMass,
+  body2: CentreOfMass,
+  color: string,
+  opacity: number
+): SVGLineElement {
+  const line = [body1.massX, body1.massY, body2.massX, body2.massY] as const
+
+  return renderLineSegment(svg, line, color, opacity)
+}
+
+function renderLineSegment(
+  svg: SVGSVGElement,
+  line: readonly [number, number, number, number],
+  color: string,
+  opacity: number
+): SVGLineElement {
+  const el = document.createElementNS(SVGNS, "line")
+  const [x1, y1, x2, y2] = line
+
+  el.setAttributeNS(null, "x1", (COORD_TRANSFORM * x1).toString())
+  el.setAttributeNS(null, "x2", (COORD_TRANSFORM * x2).toString())
+  el.setAttributeNS(null, "y1", (COORD_TRANSFORM * y1).toString())
+  el.setAttributeNS(null, "y2", (COORD_TRANSFORM * y2).toString())
+
+  el.setAttributeNS(null, "stroke", color)
+  el.setAttributeNS(null, "stroke-width", "1")
+  el.setAttributeNS(null, "opacity", opacity.toString())
+  el.setAttributeNS(null, "stroke-dasharray", "2 3")
+  svg.appendChild(el)
+
+  return el
+}
 
 function renderNodeQuad(
   svg: SVGSVGElement,
@@ -302,7 +464,7 @@ function renderNodeQuad(
   quad: Quad,
   maxDepth: number
 ): void {
-  renderRectangle(svg, rectangles, quad, "pink", 1)
+  const rect = renderRectangle(svg, quad, "pink", 1)
   if (maxDepth == 0 || quad instanceof Leaf || quad instanceof Empty) return
 
   const belowMiddle = node.massY > quad.centerY
@@ -318,12 +480,10 @@ function renderNodeQuad(
 
 function renderRectangle(
   svg: SVGSVGElement,
-  rectangles: Rectangle[],
   quad: Quad,
   color: string,
-  opacity: number,
-  dashed: boolean = false
-): void {
+  opacity: number
+): SVGRectElement {
   const el = document.createElementNS(SVGNS, "rect")
   el.setAttributeNS(
     null,
@@ -341,8 +501,7 @@ function renderRectangle(
   el.setAttributeNS(null, "fill-opacity", "0")
   el.setAttributeNS(null, "stroke-width", "1")
   el.setAttributeNS(null, "opacity", opacity.toString())
-  dashed && el.setAttributeNS(null, "stroke-dasharray", "5 10")
   svg.appendChild(el)
 
-  rectangles.push({ el })
+  return el
 }

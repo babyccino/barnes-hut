@@ -1,13 +1,12 @@
-import { useEffect, useRef, useCallback } from "react"
-import { render } from "react-dom"
+import { useEffect, useRef, useCallback, SVGProps } from "react"
+import { GALAXY } from "../lib/galaxy"
 import { Body, CentreOfMass } from "../lib/interface"
-import { getLines, IntervalMapCb, Line } from "../lib/lines"
+import { getLines, Line } from "../lib/lines"
 import {
   createQuadAndInsertBodies,
   eliminateOutliers,
   Empty,
   Fork,
-  GEE,
   getBoundaries,
   Leaf,
   Quad,
@@ -23,13 +22,14 @@ export default function Simulation({
   renderUncalcuatedQuads,
   renderCalculatedQuads,
   theta,
+  ...props
 }: {
   nodeCount: number
   running: boolean
   renderUncalcuatedQuads: boolean
   renderCalculatedQuads: boolean
   theta: number
-}): JSX.Element {
+} & SVGProps<SVGSVGElement>): JSX.Element {
   const svgRef = useRef<SVGSVGElement>(null)
   const nodesRef = useRef<SvgNode[]>([])
   const clearablesRef = useRef<SVGElement[]>([])
@@ -56,23 +56,21 @@ export default function Simulation({
     clearables.push(renderCircle(svg, focusNode, focusNode.color, 1, 5))
   }, [theta])
 
+  // rerender quadtree
   useEffect(() => {
-    console.log("use effect 1")
     if (!running && renderCalculatedQuads) {
       clearAndRenderQuad()
     }
   }, [running, clearAndRenderQuad, renderCalculatedQuads])
 
+  // change node opacity when estimation graphic is visible
   useEffect(() => {
     nodesRef.current.forEach((node) =>
-      node.el.setAttributeNS(
-        null,
-        "opacity",
-        (renderCalculatedQuads ? 0.3 : 1).toString()
-      )
+      node.el.setAttributeNS(null, "opacity", (renderCalculatedQuads ? 0.3 : 1).toString())
     )
   }, [renderCalculatedQuads])
 
+  // animation loop
   useEffect(() => {
     window.cancelAnimationFrame(frame.current - 1)
     window.cancelAnimationFrame(frame.current)
@@ -110,6 +108,7 @@ export default function Simulation({
     }
   }, [running, renderUncalcuatedQuads, renderCalculatedQuads, theta])
 
+  // stop animation
   useEffect(() => {
     if (!running) {
       window.cancelAnimationFrame(frame.current - 1)
@@ -117,22 +116,22 @@ export default function Simulation({
     }
   }, [running])
 
+  // reset system
   useEffect(() => {
     fullClear(svgRef.current, nodesRef.current, clearablesRef.current)
 
-    // randomlyDistributedPoints(svgRef.current, nodes.current, nodeCount)
     if (!svgRef.current) return
-    init2Galaxies(svgRef.current, nodesRef.current, nodeCount)
+    nodesRef.current = GALAXY.map<SvgNode>((node) =>
+      node.mass > 2
+        ? createNode(svgRef.current as SVGSVGElement, node, "black", 1, true)
+        : createNode(svgRef.current as SVGSVGElement, node, "grey", 0.3)
+    )
   }, [nodeCount])
 
-  return <svg ref={svgRef} width={X_MAX} height={Y_MAX} />
+  return <svg {...props} ref={svgRef} viewBox={`0 0 ${X_MAX} ${Y_MAX}`} />
 }
 
-function fullClear(
-  svg: SVGSVGElement | null,
-  nodes: SvgNode[],
-  clearables: SVGElement[]
-): void {
+function fullClear(svg: SVGSVGElement | null, nodes: SvgNode[], clearables: SVGElement[]): void {
   svg && (svg.innerHTML = "")
   clearables.splice(0, clearables.length)
   nodes.splice(0, nodes.length)
@@ -143,10 +142,7 @@ function fullClear(
  * @param svg
  * @param clearables
  */
-function clearImpermanentElements(
-  svg: SVGSVGElement,
-  clearables: SVGElement[]
-): void {
+function clearImpermanentElements(svg: SVGSVGElement, clearables: SVGElement[]): void {
   if (clearables.length) {
     clearables.forEach((el) => svg.removeChild(el))
     clearables.splice(0, clearables.length)
@@ -156,8 +152,8 @@ function clearImpermanentElements(
 const range = (from: number, to: number): number[] =>
   Array.from(new Array(to - from), (_, i) => i + to)
 
-const X_MAX = 500
-const Y_MAX = 500
+const X_MAX = 2500
+const Y_MAX = 2500
 
 export interface SvgNode extends Body {
   el: SVGCircleElement
@@ -177,16 +173,15 @@ function renderCircle(
   size?: number
 ): SVGCircleElement {
   const el = document.createElementNS(SVGNS, "circle")
-  el.setAttributeNS(null, "cx", (body.massX * COORD_TRANSFORM).toString())
-  el.setAttributeNS(null, "cy", (body.massY * COORD_TRANSFORM).toString())
-  el.setAttributeNS(null, "r", (size ?? body.mass).toString())
+  el.setAttributeNS(null, "cx", body.massX.toString())
+  el.setAttributeNS(null, "cy", body.massY.toString())
+  el.setAttributeNS(null, "r", (size ?? 0.7 * (body.mass - 1) + 1).toString())
   el.setAttributeNS(null, "fill", color)
   el.setAttributeNS(null, "opacity", opacity.toString())
   svg.appendChild(el)
   return el
 }
 
-const COORD_TRANSFORM = 500 / 2550
 function createNode(
   svg: SVGSVGElement,
   node: Body,
@@ -195,8 +190,8 @@ function createNode(
   blackHole: boolean = false
 ): SvgNode {
   const el = document.createElementNS(SVGNS, "circle")
-  el.setAttributeNS(null, "cx", (node.massX * COORD_TRANSFORM).toString())
-  el.setAttributeNS(null, "cy", (node.massY * COORD_TRANSFORM).toString())
+  el.setAttributeNS(null, "cx", node.massX.toString())
+  el.setAttributeNS(null, "cy", node.massY.toString())
   el.setAttributeNS(null, "r", blackHole ? "2" : node.mass.toString())
   el.setAttributeNS(null, "fill", color)
   el.setAttributeNS(null, "opacity", opacity.toString())
@@ -207,11 +202,7 @@ function createNode(
   return newNode
 }
 
-function randomlyDistributedPoints(
-  svg: SVGSVGElement,
-  nodes: SvgNode[],
-  count: number
-): void {
+function randomlyDistributedPoints(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
   while (count--) {
     nodes.push(
       createNode(
@@ -230,80 +221,7 @@ function randomlyDistributedPoints(
   }
 }
 
-const grey = "rgb(230, 230, 230)"
-function init2Galaxies(
-  svg: SVGSVGElement,
-  nodes: SvgNode[],
-  totalBodies: number
-): void {
-  function galaxy(
-    num: number,
-    maxRadius: number,
-    galaxyX: number,
-    galaxyY: number,
-    galaxySpeedX: number,
-    galaxySpeedY: number
-  ): void {
-    const totalM = 1.5 * num
-    const blackHoleM = 1.0 * num
-
-    // black hole
-    nodes.push(
-      createNode(
-        svg,
-        {
-          mass: blackHoleM,
-          massX: galaxyX,
-          massY: galaxyY,
-          xSpeed: galaxySpeedX,
-          ySpeed: galaxySpeedY,
-        },
-        "black",
-        1,
-        true
-      )
-    )
-
-    // stars
-    for (let i = 1; i < num; ++i) {
-      const angle = rand(0, 2 * Math.PI)
-      const radius = 25 + rand(0, maxRadius)
-      const starX = galaxyX + radius * Math.sin(angle)
-      const starY = galaxyY + radius * Math.cos(angle)
-      const speed = Math.sqrt(
-        (GEE * blackHoleM) / radius +
-          (GEE * totalM * radius * radius) / Math.pow(maxRadius, 3)
-      )
-      const starSpeedY = galaxySpeedY + speed * Math.cos(angle + Math.PI / 2)
-      const starSpeedX = galaxySpeedX + speed * Math.sin(angle + Math.PI / 2)
-      const starMass = 1.0 + rand(0, 1)
-
-      nodes.push(
-        createNode(
-          svg,
-          {
-            mass: starMass,
-            massX: starX,
-            massY: starY,
-            xSpeed: starSpeedX,
-            ySpeed: starSpeedY,
-          },
-          grey,
-          0.3
-        )
-      )
-    }
-  }
-
-  galaxy((totalBodies / 8) * 7, 350.0, 400, 400, 10, 12)
-  galaxy(totalBodies / 8, 300, 2200, 1600, -10, -12)
-}
-
-function removeNodes(
-  svg: SVGSVGElement,
-  nodes: SvgNode[],
-  count: number
-): void {
+function removeNodes(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
   while (count--) {
     const node = nodes.pop()
     if (!node) return
@@ -322,11 +240,7 @@ function animateStandardNBody(svg: SVGSVGElement, nodes: SvgNode[]): SvgNode[] {
   })
 }
 
-function animatePoints(
-  svg: SVGSVGElement,
-  nodes: SvgNode[],
-  quad: Quad
-): SvgNode[] {
+function animatePoints(svg: SVGSVGElement, nodes: SvgNode[], quad: Quad): SvgNode[] {
   // remove svg elements if node is to be removed
   const pred = eliminateOutliers(quad)
   nodes.forEach((node) => !pred(node) && svg.removeChild(node.el))
@@ -335,16 +249,8 @@ function animatePoints(
   return nodes.filter(pred).map((node) => {
     const newNode = update(node, quad)
 
-    node.el.setAttributeNS(
-      null,
-      "cx",
-      (COORD_TRANSFORM * newNode.massX).toString()
-    )
-    node.el.setAttributeNS(
-      null,
-      "cy",
-      (COORD_TRANSFORM * newNode.massY).toString()
-    )
+    node.el.setAttributeNS(null, "cx", newNode.massX.toString())
+    node.el.setAttributeNS(null, "cy", newNode.massY.toString())
 
     return Object.assign(node, newNode)
   })
@@ -368,36 +274,25 @@ function animateQuadTree(
   const depthLimit = 100
 
   // first traverse
-  const [horizontalLines, verticalLines] = getLines(
-    quad,
-    node,
-    theta,
-    depthLimit
-  )
+  const [horizontalLines, verticalLines] = getLines(quad, node, theta, depthLimit)
   horizontalLines.forEach((intervals, y) => {
-    intervals.forEach((line) =>
-      clearables.push(renderLine(svg, line, true, y, "grey", 0.3))
-    )
+    intervals.forEach((line) => clearables.push(renderLine(svg, line, true, y, "grey", 0.3)))
   })
   verticalLines.forEach((intervals, x) => {
-    intervals.forEach((line) =>
-      clearables.push(renderLine(svg, line, false, x, "grey", 0.3))
-    )
+    intervals.forEach((line) => clearables.push(renderLine(svg, line, false, x, "grey", 0.3)))
   })
 
   const secondTrav = (traversingQuad: Quad, depth: number = 0): void => {
     if (depth >= depthLimit) return
 
-    if (traversingQuad instanceof Leaf && traversingQuad.bodies.includes(node))
-      return
+    if (traversingQuad instanceof Leaf && traversingQuad.bodies.includes(node)) return
 
     if (willCalc(traversingQuad, node, theta)) {
       if (!(traversingQuad instanceof Leaf))
         clearables.push(renderRectangle(svg, traversingQuad, "red", 1))
+
       clearables.push(renderCircle(svg, traversingQuad, "red", 1))
-      clearables.push(
-        renderLineBetweenBodies(svg, traversingQuad, node, "red", 0.5)
-      )
+      clearables.push(renderLineBetweenBodies(svg, traversingQuad, node, "red", 0.5))
     } else if (traversingQuad instanceof Fork) {
       secondTrav(traversingQuad.nw, depth + 1)
       secondTrav(traversingQuad.ne, depth + 1)
@@ -443,10 +338,10 @@ function renderLineSegment(
   const el = document.createElementNS(SVGNS, "line")
   const [x1, y1, x2, y2] = line
 
-  el.setAttributeNS(null, "x1", (COORD_TRANSFORM * x1).toString())
-  el.setAttributeNS(null, "x2", (COORD_TRANSFORM * x2).toString())
-  el.setAttributeNS(null, "y1", (COORD_TRANSFORM * y1).toString())
-  el.setAttributeNS(null, "y2", (COORD_TRANSFORM * y2).toString())
+  el.setAttributeNS(null, "x1", x1.toString())
+  el.setAttributeNS(null, "x2", x2.toString())
+  el.setAttributeNS(null, "y1", y1.toString())
+  el.setAttributeNS(null, "y2", y2.toString())
 
   el.setAttributeNS(null, "stroke", color)
   el.setAttributeNS(null, "stroke-width", "1")
@@ -469,12 +364,9 @@ function renderNodeQuad(
 
   const belowMiddle = node.massY > quad.centerY
   const rightOfMiddle = node.massX > quad.centerX
-  if (belowMiddle && rightOfMiddle)
-    renderNodeQuad(svg, rectangles, node, quad, maxDepth - 1)
-  else if (belowMiddle && !rightOfMiddle)
-    renderNodeQuad(svg, rectangles, node, quad, maxDepth - 1)
-  else if (!belowMiddle && rightOfMiddle)
-    renderNodeQuad(svg, rectangles, node, quad, maxDepth - 1)
+  if (belowMiddle && rightOfMiddle) renderNodeQuad(svg, rectangles, node, quad, maxDepth - 1)
+  else if (belowMiddle && !rightOfMiddle) renderNodeQuad(svg, rectangles, node, quad, maxDepth - 1)
+  else if (!belowMiddle && rightOfMiddle) renderNodeQuad(svg, rectangles, node, quad, maxDepth - 1)
   else renderNodeQuad(svg, rectangles, node, quad, maxDepth - 1)
 }
 
@@ -485,18 +377,10 @@ function renderRectangle(
   opacity: number
 ): SVGRectElement {
   const el = document.createElementNS(SVGNS, "rect")
-  el.setAttributeNS(
-    null,
-    "x",
-    (COORD_TRANSFORM * (quad.centerX - quad.size / 2)).toString()
-  )
-  el.setAttributeNS(
-    null,
-    "y",
-    (COORD_TRANSFORM * (quad.centerY - quad.size / 2)).toString()
-  )
-  el.setAttributeNS(null, "height", (COORD_TRANSFORM * quad.size).toString())
-  el.setAttributeNS(null, "width", (COORD_TRANSFORM * quad.size).toString())
+  el.setAttributeNS(null, "x", (quad.centerX - quad.size / 2).toString())
+  el.setAttributeNS(null, "y", (quad.centerY - quad.size / 2).toString())
+  el.setAttributeNS(null, "height", quad.size.toString())
+  el.setAttributeNS(null, "width", quad.size.toString())
   el.setAttributeNS(null, "stroke", color)
   el.setAttributeNS(null, "fill-opacity", "0")
   el.setAttributeNS(null, "stroke-width", "1")

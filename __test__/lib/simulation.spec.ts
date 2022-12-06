@@ -13,6 +13,7 @@ import {
   getBoundaries,
   eliminateOutliers,
   createQuadAndInsertBodies,
+  getQuadForBody,
 } from "../../src/lib/simulation"
 
 function expectEqual<T>(provided: T, expected: T): void {
@@ -207,14 +208,8 @@ describe("Simulation function", () => {
       new Leaf(87.5, 37.5, 25, [b4])
     )
 
-    expect(thirdDeepest.massX).toBeCloseTo(
-      (2 * secondDeepest.massX + b4.massX) / 3,
-      8
-    ) // 82.83
-    expect(thirdDeepest.massY).toBeCloseTo(
-      (2 * secondDeepest.massY + b4.massY) / 3,
-      8
-    ) // 15.17
+    expect(thirdDeepest.massX).toBeCloseTo((2 * secondDeepest.massX + b4.massX) / 3, 8) // 82.83
+    expect(thirdDeepest.massY).toBeCloseTo((2 * secondDeepest.massY + b4.massY) / 3, 8) // 15.17
 
     const last = new Fork(
       new Leaf(25, 25, 50, [b1]),
@@ -527,5 +522,57 @@ describe("Simulation function", () => {
     }
     const pred = eliminateOutliers(quad)
     expect(pred(body)).toBeTruthy()
+  })
+
+  // get quad for body
+
+  test("Single leaf with body inside returns the leaf", () => {
+    const body: Body = {
+      mass: 1,
+      massX: 25,
+      massY: 25,
+      xSpeed: 0,
+      ySpeed: 0,
+    }
+    const leaf = new Leaf(25, 25, 50, [body])
+    expect(getQuadForBody(body, leaf)).toEqual(leaf)
+  })
+
+  test("Single leaf with no body returns null", () => {
+    const body: Body = {
+      mass: 1,
+      massX: 25,
+      massY: 25,
+      xSpeed: 0,
+      ySpeed: 0,
+    }
+    const leaf = new Leaf(25, 25, 50, [])
+    expect(getQuadForBody(body, leaf)).toEqual(null)
+  })
+
+  test("Fork with leaf in one quadrant returns that leaf", () => {
+    const body: Body = {
+      mass: 1,
+      massX: 25,
+      massY: 25,
+      xSpeed: 0,
+      ySpeed: 0,
+    }
+    const leaf = new Leaf(25, 25, 50, [body])
+    const fork = new Fork(leaf, new Empty(75, 25, 50), new Empty(25, 75, 50), new Empty(75, 75, 50))
+    expect(getQuadForBody(body, fork)).toEqual(leaf)
+  })
+
+  test("Body with incorrect coordinates returns null", () => {
+    const body: Body = {
+      mass: 1,
+      massX: 25,
+      massY: 75,
+      xSpeed: 0,
+      ySpeed: 0,
+    }
+    const leaf = new Leaf(25, 25, 50, [body])
+    const fork = new Fork(leaf, new Empty(75, 25, 50), new Empty(25, 75, 50), new Empty(75, 75, 50))
+    expect(getQuadForBody(body, fork)).toEqual(null)
   })
 })

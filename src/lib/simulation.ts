@@ -21,12 +21,7 @@ export class Empty extends QuadInterface {
 export class Leaf extends QuadInterface {
   bodies: CentreOfMass[]
 
-  constructor(
-    centerX: number,
-    centerY: number,
-    size: number,
-    bodies: CentreOfMass[]
-  ) {
+  constructor(centerX: number, centerY: number, size: number, bodies: CentreOfMass[]) {
     const [mass, massX, massY] = getMassCentre(bodies)
 
     super({
@@ -79,12 +74,7 @@ export class Fork extends QuadInterface {
   }
 
   update(): Fork {
-    ;[this.mass, this.massX, this.massY] = getMassCentre(
-      this.nw,
-      this.ne,
-      this.sw,
-      this.se
-    )
+    ;[this.mass, this.massX, this.massY] = getMassCentre(this.nw, this.ne, this.sw, this.se)
     return this
   }
 
@@ -113,10 +103,7 @@ const THRESHOLD = 1
 export const force = (m1: number, m2: number, dist: number): number =>
   (GEE * m1 * m2) / (dist * dist)
 
-export function addForce(
-  body: CentreOfMass,
-  otherBody: CentreOfMass
-): [number, number] {
+export function addForce(body: CentreOfMass, otherBody: CentreOfMass): [number, number] {
   const dist = distance(body, otherBody)
   if (dist > THRESHOLD) {
     const dForce = force(body.mass, otherBody.mass, dist)
@@ -125,11 +112,7 @@ export function addForce(
   } else return [0, 0]
 }
 
-export function addForceToBody(
-  body: Body,
-  netXForce: number,
-  netYForce: number
-): Body {
+export function addForceToBody(body: Body, netXForce: number, netYForce: number): Body {
   const massX = body.massX + body.xSpeed * DELTA
   const massY = body.massY + body.ySpeed * DELTA
   const xSpeed = body.xSpeed + (netXForce / body.mass) * DELTA
@@ -161,16 +144,12 @@ function getBodies(...bodies: any[]): CentreOfMass[] {
 
 // returns [mass, massX, massY]
 export function getMassCentre(bodies: CentreOfMass[]): [number, number, number]
-export function getMassCentre(
-  ...bodies: CentreOfMass[]
-): [number, number, number]
+export function getMassCentre(...bodies: CentreOfMass[]): [number, number, number]
 export function getMassCentre(..._bodies: any[]): [number, number, number] {
   const bodies = getBodies(..._bodies)
   const mass = bodies.reduce((prev, body) => prev + body.mass, 0)
-  const massX =
-    bodies.reduce((prev, body) => prev + body.mass * body.massX, 0) / mass
-  const massY =
-    bodies.reduce((prev, body) => prev + body.mass * body.massY, 0) / mass
+  const massX = bodies.reduce((prev, body) => prev + body.mass * body.massX, 0) / mass
+  const massY = bodies.reduce((prev, body) => prev + body.mass * body.massY, 0) / mass
   return [mass, massX, massY]
 }
 
@@ -239,6 +218,20 @@ export function createQuadAndInsertBodies(
   return bodies.reduce<Quad>((quad, body) => quad.insert(body), newFork)
 }
 
+export function getQuadForBody(body: CentreOfMass, quad: Quad): Leaf | null {
+  const belowMiddle = body.massY > quad.centerY
+  const rightOfMiddle = body.massX > quad.centerX
+
+  if (quad instanceof Fork) {
+    if (belowMiddle && rightOfMiddle) return getQuadForBody(body, quad.se)
+    else if (belowMiddle && !rightOfMiddle) return getQuadForBody(body, quad.sw)
+    else if (!belowMiddle && rightOfMiddle) return getQuadForBody(body, quad.ne)
+    else return getQuadForBody(body, quad.nw)
+  } else if (quad instanceof Leaf && quad.bodies.includes(body)) {
+    return quad
+  } else return null
+}
+
 export function update(body: Body, quad: Quad): Body {
   let netXForce = 0
   let netYForce = 0
@@ -272,9 +265,7 @@ export function update(body: Body, quad: Quad): Body {
 }
 
 const ELIMINATION_THRESHOLD = 0.5
-export function eliminateOutliers(
-  quad: QuadInterface
-): (body: Body) => boolean {
+export function eliminateOutliers(quad: QuadInterface): (body: Body) => boolean {
   // returns true for nodes which should not be eliminated
   return (body: Body): boolean => {
     const dx = quad.massX - body.massX
@@ -304,14 +295,9 @@ export function eliminateOutliers(
   }
 }
 
-export const willCalc = (
-  quad: Quad,
-  body: CentreOfMass,
-  theta: number = THETA
-): boolean =>
+export const willCalc = (quad: Quad, body: CentreOfMass, theta: number = THETA): boolean =>
   (theta === 0 && quad instanceof Leaf) ||
-  (!(quad instanceof Empty) &&
-    (quad instanceof Leaf || quad.size / distance(quad, body) < theta))
+  (!(quad instanceof Empty) && (quad instanceof Leaf || quad.size / distance(quad, body) < theta))
 
 // export const willCalc = (quad: Quad, body: CentreOfMass): boolean =>
 //   quad instanceof Leaf ||

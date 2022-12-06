@@ -2,6 +2,7 @@ import { ChangeEventHandler, InputHTMLAttributes, useState } from "react"
 import Head from "next/head"
 
 import Simulation from "../components/simulation"
+import { MAX_GALAXY_SIZE } from "../lib/galaxy"
 
 const Math = ({ children }: { children: any }) => (
   <span className="italic font-serif">{children}</span>
@@ -12,7 +13,7 @@ export default function Home(): JSX.Element {
   const [theta, setTheta] = useState(0.5)
   const [renderCalculatedQuads, setRenderCalculatedQuads] = useState(false)
   const [renderUncalcuatedQuads, setRenderUncalcuatedQuads] = useState(false)
-  const [nodeCount, setNodeCount] = useState(100)
+  const [nodeCount, setNodeCount] = useState(MAX_GALAXY_SIZE)
   const onNodeCount: ChangeEventHandler<HTMLInputElement> = (e) => {
     setNodeCount(e.target.valueAsNumber)
     setSimRunning(false)
@@ -66,12 +67,16 @@ export default function Home(): JSX.Element {
             type="range"
             name="nodeCount"
             min="1"
-            max="100"
-            defaultValue={100}
+            max={MAX_GALAXY_SIZE}
+            defaultValue={MAX_GALAXY_SIZE}
             step={1}
             onChange={onNodeCount}
           />
           <label htmlFor="nodeCount">Number of bodies</label>
+          <p>
+            The main idea in the estimation is that a group of far away bodies can be approximated
+            using a combined body with the total mass and centre of mass of the system.
+          </p>
           <input
             className="block"
             type="range"

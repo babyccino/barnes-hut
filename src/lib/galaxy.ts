@@ -2,6 +2,7 @@ import { Body } from "./interface"
 import { GEE } from "./simulation"
 import { rand } from "./util"
 
+export const MAX_GALAXY_SIZE = 200
 function init2Galaxies(totalBodies: number): Body[] {
   const bodies: Body[] = []
   function galaxy(
@@ -52,4 +53,4 @@ function init2Galaxies(totalBodies: number): Body[] {
 
   return bodies
 }
-export const GALAXY = init2Galaxies(100)
+export const GALAXY = init2Galaxies(MAX_GALAXY_SIZE)

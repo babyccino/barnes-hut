@@ -75,7 +75,7 @@ export default function Simulation({
   // change node opacity when estimation graphic is visible
   useEffect(() => {
     nodesRef.current.forEach((node) =>
-      node.el.setAttributeNS(null, "opacity", (renderCalculatedQuads ? 0.3 : 1).toString())
+      node.el.setAttributeNS(null, "opacity", (renderCalculatedQuads ? 0.4 : 1).toString())
     )
   }, [renderCalculatedQuads])
 

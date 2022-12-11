@@ -138,22 +138,6 @@ describe("Line tests", () => {
     expect(verticalLines).toEqual(expectedMap)
   })
 
-  test("Get lines should return empty maps for Leaf node", () => {
-    const body: Body = {
-      mass: 87.5,
-      massX: 0,
-      massY: 0,
-      xSpeed: 10,
-      ySpeed: 12,
-    }
-    const leaf = new Leaf(50, 50, 100, [body])
-    const [horizontalLines, verticalLines] = getLines(leaf, body)
-    const expectedMap = new IntervalMap()
-
-    expect(horizontalLines).toEqual(expectedMap)
-    expect(verticalLines).toEqual(expectedMap)
-  })
-
   test("Get lines should return correct maps for simple system", () => {
     const body1: Body = {
       mass: 1,

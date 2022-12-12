@@ -49,7 +49,7 @@ export default function Home(): JSX.Element {
           name="description"
           content="A visualisation of the Barnes-Hut simulation for n-body systems"
         />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.svg" />
       </Head>
 
       <main className="flex justify-end w-1/2 py-6">

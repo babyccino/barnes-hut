@@ -1,10 +1,20 @@
-import { ChangeEventHandler, InputHTMLAttributes, MouseEventHandler, useState } from "react"
+import { ChangeEventHandler, useState, ReactNode, HTMLProps } from "react"
 import Head from "next/head"
 
 import Simulation from "../components/simulation"
 import { MAX_GALAXY_SIZE } from "../lib/galaxy"
 
-const Math = ({ children }: { children: any }) => (
+const Button = ({ onClick, children }: HTMLProps<HTMLButtonElement>) => (
+  <button
+    className="whitespace-nowrap inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md
+											shadow-sm text-base font-medium text-white bg-sky-700 hover:bg-sky-800"
+    onClick={onClick}
+  >
+    {children}
+  </button>
+)
+
+const Math = ({ children }: { children: ReactNode }) => (
   <span className="italic font-serif">{children}</span>
 )
 
@@ -26,7 +36,7 @@ export default function Home(): JSX.Element {
     setRenderUncalcuatedQuads(true)
     setTheta(e.target.valueAsNumber)
   }
-  const turnOffGraphics: MouseEventHandler<HTMLButtonElement> = (e) => {
+  const turnOffGraphics = (): void => {
     setRenderCalculatedQuads(false)
     setRenderUncalcuatedQuads(false)
   }
@@ -34,7 +44,7 @@ export default function Home(): JSX.Element {
   return (
     <div>
       <Head>
-        x<title>The Barnes-Hut Simulation</title>
+        <title>The Barnes-Hut Simulation</title>
         <meta
           name="description"
           content="A visualisation of the Barnes-Hut simulation for n-body systems"
@@ -42,7 +52,7 @@ export default function Home(): JSX.Element {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="flex justify-end w-1/2 py-8czzszszszszzzzzszZhcvch cc">
+      <main className="flex justify-end w-1/2 py-6">
         <Simulation
           className="fixed left-1/2 top-1/2 -translate-y-1/2 w-full h-full max-w-[50%] 
             max-h-full"
@@ -111,20 +121,17 @@ export default function Home(): JSX.Element {
             />
             <div>{theta}</div>
           </div>
-          <button
-            className="ml-8 whitespace-nowrap inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md
-											shadow-sm text-base font-medium text-white bg-sky-700 hover:bg-sky-800"
-            onClick={() => setSimRunning((state) => !state)}
-          >
-            Start/stop
-          </button>
-          <button
-            className="ml-8 whitespace-nowrap inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md
-											shadow-sm text-base font-medium text-white bg-sky-700 hover:bg-sky-800"
-            onClick={turnOffGraphics}
-          >
-            Turn off graphics
-          </button>
+          <div className="w-full flex justify-center gap-6">
+            <Button
+              onClick={() => {
+                turnOffGraphics()
+                setSimRunning((state) => !state)
+              }}
+            >
+              Start/stop
+            </Button>
+            <Button onClick={turnOffGraphics}>Turn off graphics</Button>
+          </div>
         </div>
       </main>
     </div>

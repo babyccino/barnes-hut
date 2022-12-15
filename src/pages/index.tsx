@@ -32,9 +32,8 @@ export default function Home(): JSX.Element {
   const [renderCalculatedQuads, setRenderCalculatedQuads] = useState(false)
   const [renderUncalcuatedQuads, setRenderUncalcuatedQuads] = useState(false)
   const [nodeCount, setNodeCount] = useState(MAX_GALAXY_SIZE)
-  const [showAddingPoints, setShowAddingPoints] = useState<AddingPointsState>(
-    AddingPointsState.UnMounted
-  )
+  const [showAddingPoints, setShowAddingPoints] = useState(AddingPointsState.UnMounted)
+
   const onNodeCount: ChangeEventHandler<HTMLInputElement> = e => {
     setNodeCount(e.target.valueAsNumber)
     setSimRunning(false)
@@ -92,7 +91,6 @@ export default function Home(): JSX.Element {
           className={`fixed sm:left-1/2 sm:top-1/2 sm:-translate-y-1/2 w-full h-full sm:max-w-[50%] 
             max-h-full ${showAddingPoints === AddingPointsState.UnMounting ? "fadeOut" : "fadeIn"}`}
           stop={showAddingPoints === AddingPointsState.UnMounting}
-          // nodeCount={nodeCount}
         />
       ) : null}
 
@@ -119,6 +117,7 @@ export default function Home(): JSX.Element {
             defaultValue={MAX_GALAXY_SIZE}
             step={1}
             onChange={onNodeCount}
+            disabled={showAddingPoints !== AddingPointsState.UnMounted}
           />
           <div className="align-middle">{nodeCount}</div>
         </div>
@@ -132,7 +131,9 @@ export default function Home(): JSX.Element {
           distant, forces can be estimated using these values instead of calculating the force for
           every node
         </p>
-        <Button onClick={toggleAddingPoints}>Show thingy</Button>
+        <div className="w-full flex justify-center gap-6">
+          <Button onClick={toggleAddingPoints}>Show how the quadtree is constructed</Button>
+        </div>
         <p>
           The threshold used to determine whether a force calculation will use the combined centre
           of mass or recursively calculate for the nodes within a fork is simply the ratio between

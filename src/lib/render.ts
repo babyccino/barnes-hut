@@ -1,8 +1,6 @@
 import { SvgNode } from "../components/simulation"
-import { Body, CentreOfMass } from "./interface"
+import { BoundariesInterface, CentreOfMass } from "./interface"
 import { Line } from "./lines"
-import { Quad } from "./simulation"
-
 export const SVGNS = "http://www.w3.org/2000/svg"
 
 export function removeNodes(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
@@ -64,19 +62,21 @@ export function renderLineSegment(
 
 export function renderRectangle(
   svg: SVGSVGElement,
-  quad: Quad,
+  rectangle: BoundariesInterface,
   color: string,
-  opacity: number
+  opacity: number,
+  dashed: boolean = false
 ): SVGRectElement {
   const el = document.createElementNS(SVGNS, "rect")
-  el.setAttributeNS(null, "x", (quad.centerX - quad.size / 2).toString())
-  el.setAttributeNS(null, "y", (quad.centerY - quad.size / 2).toString())
-  el.setAttributeNS(null, "height", quad.size.toString())
-  el.setAttributeNS(null, "width", quad.size.toString())
+  el.setAttributeNS(null, "x", (rectangle.centerX - rectangle.size / 2).toString())
+  el.setAttributeNS(null, "y", (rectangle.centerY - rectangle.size / 2).toString())
+  el.setAttributeNS(null, "height", rectangle.size.toString())
+  el.setAttributeNS(null, "width", rectangle.size.toString())
   el.setAttributeNS(null, "stroke", color)
   el.setAttributeNS(null, "fill-opacity", "0")
   el.setAttributeNS(null, "stroke-width", "2")
   el.setAttributeNS(null, "opacity", opacity.toString())
+  dashed && el.setAttributeNS(null, "stroke-dasharray", "4 6")
   svg.appendChild(el)
 
   return el
@@ -87,12 +87,12 @@ export function renderCircle(
   body: CentreOfMass,
   color: string,
   opacity: number = 1,
-  size?: number
+  size: number = 0.7 * (body.mass - 1) + 1
 ): SVGCircleElement {
   const el = document.createElementNS(SVGNS, "circle")
   el.setAttributeNS(null, "cx", body.massX.toString())
   el.setAttributeNS(null, "cy", body.massY.toString())
-  el.setAttributeNS(null, "r", (size ?? 0.7 * (body.mass - 1) + 1).toString())
+  el.setAttributeNS(null, "r", size.toString())
   el.setAttributeNS(null, "fill", color)
   el.setAttributeNS(null, "opacity", opacity.toString())
   svg.appendChild(el)

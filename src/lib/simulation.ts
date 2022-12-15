@@ -1,7 +1,7 @@
-import { Body, Boundaries, CentreOfMass, ForkInterface, QuadInterface } from "./interface"
+import { Body, Boundaries, CentreOfMass, ForkInterface, QuadBase } from "./interface"
 import { distance, getQuadrant, unitVector } from "./util"
 
-export class Empty extends QuadInterface {
+export class Empty extends QuadBase {
   constructor(centerX: number, centerY: number, size: number) {
     super({
       massX: centerX,
@@ -18,7 +18,7 @@ export class Empty extends QuadInterface {
     return new Leaf(this.centerX, this.centerY, this.size, [body])
   }
 }
-export class Leaf extends QuadInterface {
+export class Leaf extends QuadBase {
   bodies: CentreOfMass[]
 
   constructor(centerX: number, centerY: number, size: number, bodies: CentreOfMass[]) {
@@ -53,7 +53,7 @@ export class Leaf extends QuadInterface {
     }
   }
 }
-export class Fork extends QuadInterface implements ForkInterface {
+export class Fork extends QuadBase implements ForkInterface {
   nw: Quad
   ne: Quad
   sw: Quad
@@ -228,7 +228,7 @@ export function update(body: Body, quad: Quad): Body {
 }
 
 const ELIMINATION_THRESHOLD = 0.5
-export function eliminateOutliers(quad: QuadInterface): (body: Body) => boolean {
+export function eliminateOutliers(quad: QuadBase): (body: Body) => boolean {
   // returns true for nodes which should not be eliminated
   return (body: Body): boolean => {
     const dx = quad.massX - body.massX

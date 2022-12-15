@@ -72,7 +72,7 @@ export default function Simulation({
 
   // change node opacity when estimation graphic is visible
   useEffect(() => {
-    nodesRef.current.forEach((node) =>
+    nodesRef.current.forEach(node =>
       node.el.setAttributeNS(null, "opacity", (renderCalculatedQuads ? 0.4 : 1).toString())
     )
   }, [renderCalculatedQuads])
@@ -133,7 +133,7 @@ export default function Simulation({
 
     if (!svg) return
 
-    nodesRef.current = GALAXY.slice(0, nodeCount).map<SvgNode>((node) =>
+    nodesRef.current = GALAXY.slice(0, nodeCount).map<SvgNode>(node =>
       node.mass > 2
         ? createNode(svg as SVGSVGElement, node, "black", 1, true)
         : createNode(svg as SVGSVGElement, node, "grey", 1)
@@ -158,10 +158,10 @@ function highlightLastNode(svg: SVGSVGElement, bodies: Body[], clearables: SVGEl
 
   const [horizontalLines, verticalLines] = getAllLines(quad)
   horizontalLines.forEach((intervals, y) => {
-    intervals.forEach((line) => clearables.push(renderLine(svg, line, true, y, "grey", 0.5)))
+    intervals.forEach(line => clearables.push(renderLine(svg, line, true, y, "grey", 0.5)))
   })
   verticalLines.forEach((intervals, x) => {
-    intervals.forEach((line) => clearables.push(renderLine(svg, line, false, x, "grey", 0.5)))
+    intervals.forEach(line => clearables.push(renderLine(svg, line, false, x, "grey", 0.5)))
   })
 
   const leaf = getQuadForBody(body, quad) as Leaf
@@ -184,7 +184,7 @@ function fullClear(svg: SVGSVGElement | null, nodes: SvgNode[], clearables: SVGE
  */
 function clearImpermanentElements(svg: SVGSVGElement, clearables: SVGElement[]): void {
   if (clearables.length) {
-    clearables.forEach((el) => svg.removeChild(el))
+    clearables.forEach(el => svg.removeChild(el))
     clearables.splice(0, clearables.length)
   }
 }
@@ -240,7 +240,7 @@ function randomlyDistributedPoints(svg: SVGSVGElement, nodes: SvgNode[], count: 
 }
 
 function animateStandardNBody(svg: SVGSVGElement, nodes: SvgNode[]): SvgNode[] {
-  return nodes.map((node) => {
+  return nodes.map(node => {
     const newNode = standardNBody(node, nodes)
 
     node.el.setAttributeNS(null, "cx", node.massX.toString())
@@ -253,10 +253,10 @@ function animateStandardNBody(svg: SVGSVGElement, nodes: SvgNode[]): SvgNode[] {
 function animatePoints(svg: SVGSVGElement, nodes: SvgNode[], quad: Quad): SvgNode[] {
   // remove svg elements if node is to be removed
   const pred = eliminateOutliers(quad)
-  nodes.forEach((node) => !pred(node) && svg.removeChild(node.el))
+  nodes.forEach(node => !pred(node) && svg.removeChild(node.el))
 
   // filter nodes then animate them
-  return nodes.filter(pred).map((node) => {
+  return nodes.filter(pred).map(node => {
     const newNode = update(node, quad)
 
     node.el.setAttributeNS(null, "cx", newNode.massX.toString())
@@ -286,10 +286,10 @@ function animateQuadTree(
   // first traverse
   const [horizontalLines, verticalLines] = getLines(quad, node, theta, depthLimit)
   horizontalLines.forEach((intervals, y) => {
-    intervals.forEach((line) => clearables.push(renderLine(svg, line, true, y, "grey", 0.3)))
+    intervals.forEach(line => clearables.push(renderLine(svg, line, true, y, "grey", 0.3)))
   })
   verticalLines.forEach((intervals, x) => {
-    intervals.forEach((line) => clearables.push(renderLine(svg, line, false, x, "grey", 0.3)))
+    intervals.forEach(line => clearables.push(renderLine(svg, line, false, x, "grey", 0.3)))
   })
 
   const secondTrav = (traversingQuad: Quad, depth: number = 0): void => {

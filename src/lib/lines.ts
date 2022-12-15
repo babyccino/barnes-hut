@@ -1,4 +1,4 @@
-import { CentreOfMass, QuadInterface } from "./interface"
+import { CentreOfMass, QuadBase } from "./interface"
 import { Empty, Fork, Leaf, Quad, THETA, willCalc } from "./simulation"
 
 // [lineStart, lineEnd]
@@ -38,7 +38,7 @@ export function addLine(line: Line, index: number, map: IntervalMap): IntervalMa
 }
 
 export function addLinesFromQuad(
-  quad: QuadInterface,
+  quad: QuadBase,
   horizontal: IntervalMap,
   vertical: IntervalMap
 ): void {

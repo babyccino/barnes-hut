@@ -1,6 +1,9 @@
 import { SvgNode } from "../components/simulation"
-import { BoundariesInterface, CentreOfMass } from "./interface"
+import { Body, BoundariesInterface, CentreOfMass, QuadInterface } from "./interface"
 import { Line } from "./lines"
+import { Empty, Leaf, Quad, Fork } from "./simulation"
+import { getQuadrant } from "./util"
+
 export const SVGNS = "http://www.w3.org/2000/svg"
 
 export function removeNodes(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
@@ -97,4 +100,34 @@ export function renderCircle(
   el.setAttributeNS(null, "opacity", opacity.toString())
   svg.appendChild(el)
   return el
+}
+
+function foundAddedQuad(
+  newBody: Body,
+  newQuad: Quad,
+  addedQuads: BoundariesInterface[]
+): BoundariesInterface[] {
+  if (!(newQuad instanceof Fork)) return addedQuads
+
+  const newAddedQuads = [...addedQuads, newQuad]
+
+  return foundAddedQuad(newBody, newQuad[getQuadrant(newBody, newQuad)], newAddedQuads)
+}
+
+export function newLines(
+  newBody: Body,
+  newQuad: Quad,
+  oldQuad: Quad | null
+): BoundariesInterface[] {
+  if (!(newQuad instanceof Fork)) return []
+  // if we have reached a new fork add the lines
+  // (because newquad is still a fork but the old one is no longer)
+  // continue adding lines from here on in by making oldQuad null
+  if (oldQuad === null || !(oldQuad instanceof Fork)) {
+    return foundAddedQuad(newBody, newQuad, [])
+  }
+
+  const quadrant = getQuadrant(newBody, newQuad)
+
+  return newLines(newBody, newQuad[quadrant], oldQuad[quadrant])
 }

@@ -3,6 +3,7 @@ import Head from "next/head"
 
 import Simulation from "../components/simulation"
 import { MAX_GALAXY_SIZE } from "../lib/galaxy"
+import AddingPoints from "../components/addingPoints/addingPoints"
 
 const Button = ({ onClick, children }: HTMLProps<HTMLButtonElement>) => (
   <button
@@ -18,12 +19,22 @@ const Math = ({ children }: { children: ReactNode }) => (
   <span className="italic font-serif">{children}</span>
 )
 
+enum AddingPointsState {
+  UnMounted,
+  Mounting,
+  Mounted,
+  UnMounting,
+}
+
 export default function Home(): JSX.Element {
   const [simRunning, setSimRunning] = useState(true)
   const [theta, setTheta] = useState(0.5)
   const [renderCalculatedQuads, setRenderCalculatedQuads] = useState(false)
   const [renderUncalcuatedQuads, setRenderUncalcuatedQuads] = useState(false)
   const [nodeCount, setNodeCount] = useState(MAX_GALAXY_SIZE)
+  const [showAddingPoints, setShowAddingPoints] = useState<AddingPointsState>(
+    AddingPointsState.UnMounted
+  )
   const onNodeCount: ChangeEventHandler<HTMLInputElement> = (e) => {
     setNodeCount(e.target.valueAsNumber)
     setSimRunning(false)
@@ -40,18 +51,50 @@ export default function Home(): JSX.Element {
     setRenderCalculatedQuads(false)
     setRenderUncalcuatedQuads(false)
   }
+  const toggleAddingPoints = (): void => {
+    if (showAddingPoints === AddingPointsState.Mounted) {
+      setShowAddingPoints(AddingPointsState.UnMounting)
+      setTimeout(() => {
+        setShowAddingPoints(AddingPointsState.UnMounted)
+        setSimRunning(true)
+      }, 1000)
+    }
+    if (showAddingPoints === AddingPointsState.UnMounted) {
+      setShowAddingPoints(AddingPointsState.Mounting)
+      setTimeout(() => {
+        setShowAddingPoints(AddingPointsState.Mounted)
+        setSimRunning(false)
+      }, 1000)
+    }
+  }
+  const startStop = (): void => {
+    turnOffGraphics()
+    setSimRunning((state) => !state)
+  }
 
   return (
-    <main className="flex justify-end w-1/2 py-6">
-      <Simulation
-        className="fixed left-1/2 top-1/2 -translate-y-1/2 w-full h-full max-w-[50%] 
-            max-h-full"
-        nodeCount={nodeCount}
-        running={simRunning}
-        renderCalculatedQuads={renderCalculatedQuads}
-        renderUncalcuatedQuads={renderUncalcuatedQuads}
-        theta={theta}
-      />
+    <main className="flex justify-end sm:w-1/2 py-6 px-6">
+      {showAddingPoints !== AddingPointsState.Mounted ? (
+        <Simulation
+          className={`fixed sm:left-1/2 sm:top-1/2 sm:-translate-y-1/2 w-full h-full sm:max-w-[50%] max-h-full ${
+            showAddingPoints === AddingPointsState.Mounting ? "fadeOut" : "fadeIn"
+          }`}
+          nodeCount={nodeCount}
+          running={simRunning}
+          renderCalculatedQuads={renderCalculatedQuads}
+          renderUncalcuatedQuads={renderUncalcuatedQuads}
+          theta={theta}
+        />
+      ) : null}
+      {showAddingPoints !== AddingPointsState.UnMounted ? (
+        <AddingPoints
+          style={{ animationDelay: "300ms" }}
+          className={`fixed sm:left-1/2 sm:top-1/2 sm:-translate-y-1/2 w-full h-full sm:max-w-[50%] 
+            max-h-full ${showAddingPoints === AddingPointsState.UnMounting ? "fadeOut" : "fadeIn"}`}
+          stop={showAddingPoints === AddingPointsState.UnMounting}
+          // nodeCount={nodeCount}
+        />
+      ) : null}
 
       <div className="relative right-0 w-full max-w-xl space-y-4">
         <h1 className="text-3xl font-bold py-2 pb-4">The Barnes-Hut Simulation</h1>
@@ -65,17 +108,7 @@ export default function Home(): JSX.Element {
           simulation), can estimate an n-body system with low error at&nbsp;
           <Math>O(n*log(n))</Math>.
         </p>
-        <p>
-          The main idea in the estimation is that a group of far away bodies can be approximated
-          using a combined body with the total mass and centre of mass of the system. In the
-          Barnes-Hut simulation this is achieved using a quadtree. Each node of the quadtree can be
-          either: an empty node; a leaf containing one body; or a fork. The fork itself has four
-          nodes corresponding to equally sized quadrants which are themselves a node of some kind.
-          Each fork keeps track of its total mass and centre of mass so if a body is sufficiently
-          distant, forces can be estimated using these values instead of calculating the force for
-          every node
-        </p>
-        <div className="flex flex-row py-2 gap-4 w-[90%] m-auto">
+        <div className="flex flex-row pt-2 pb-[calc(100vh-1rem)] sm:pb-2 gap-4 w-[90%] m-auto">
           <label htmlFor="nodeCount">Number of bodies</label>
           <input
             className="grow"
@@ -87,10 +120,21 @@ export default function Home(): JSX.Element {
             step={1}
             onChange={onNodeCount}
           />
-          <div>{nodeCount}</div>
+          <div className="align-middle">{nodeCount}</div>
         </div>
         <p>
-          The heuristic used to determine whether a force calculation will use the combined centre
+          The main idea in the estimation is that a group of far away bodies can be approximated
+          using a combined body with the total mass and centre of mass of the system. In the
+          Barnes-Hut simulation this is achieved using a quadtree. Each node of the quadtree can be
+          either: an empty node; a leaf containing one body; or a fork. The fork itself has four
+          nodes corresponding to equally sized quadrants which are themselves a node of some kind.
+          Each fork keeps track of its total mass and centre of mass so if a body is sufficiently
+          distant, forces can be estimated using these values instead of calculating the force for
+          every node
+        </p>
+        <Button onClick={toggleAddingPoints}>Show thingy</Button>
+        <p>
+          The threshold used to determine whether a force calculation will use the combined centre
           of mass or recursively calculate for the nodes within a fork is simply the ratio between
           distance to and size of the fork. If this greater than a chosen value theta then the
           estimation be used and vice versa. Decreasing theta will give a more accurate simulation
@@ -112,14 +156,7 @@ export default function Home(): JSX.Element {
           <div>{theta}</div>
         </div>
         <div className="w-full flex justify-center gap-6">
-          <Button
-            onClick={() => {
-              turnOffGraphics()
-              setSimRunning((state) => !state)
-            }}
-          >
-            Start/stop
-          </Button>
+          <Button onClick={startStop}>Start/stop</Button>
           <Button onClick={turnOffGraphics}>Turn off graphics</Button>
         </div>
       </div>

@@ -15,7 +15,7 @@ export interface Body extends CentreOfMass {
   ySpeed: number
 }
 
-export abstract class QuadInterface implements CentreOfMass, BoundariesInterface {
+export abstract class QuadBase implements CentreOfMass, BoundariesInterface {
   massX: number
   massY: number
   mass: number
@@ -46,10 +46,10 @@ export abstract class QuadInterface implements CentreOfMass, BoundariesInterface
 }
 
 export interface ForkInterface {
-  nw: QuadInterface
-  ne: QuadInterface
-  sw: QuadInterface
-  se: QuadInterface
+  nw: QuadBase
+  ne: QuadBase
+  sw: QuadBase
+  se: QuadBase
 }
 
 export class Boundaries implements BoundariesInterface {

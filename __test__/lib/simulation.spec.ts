@@ -1,4 +1,4 @@
-import { Body, CentreOfMass, QuadInterface } from "../../src/lib/interface"
+import { Body, CentreOfMass, QuadBase } from "../../src/lib/interface"
 import {
   Empty,
   Leaf,
@@ -488,7 +488,7 @@ describe("Simulation function", () => {
       xSpeed: 10,
       ySpeed: 12,
     }
-    const quad: QuadInterface = {
+    const quad: QuadBase = {
       massX: 610.3309244128295,
       massY: 542.090995399429,
       mass: 247.77992948564253,
@@ -510,7 +510,7 @@ describe("Simulation function", () => {
       xSpeed: -5.278678190384497,
       ySpeed: -10.120698277660486,
     }
-    const quad: QuadInterface = {
+    const quad: QuadBase = {
       massX: 415.09949539996944,
       massY: 399.881460413101,
       mass: 221.87956737011322,

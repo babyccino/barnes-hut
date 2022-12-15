@@ -1,5 +1,5 @@
 import { SvgNode } from "../components/simulation"
-import { Body, BoundariesInterface, CentreOfMass, QuadInterface } from "./interface"
+import { Body, BoundariesInterface, CentreOfMass, QuadBase } from "./interface"
 import { Line } from "./lines"
 import { Empty, Leaf, Quad, Fork } from "./simulation"
 import { getQuadrant } from "./util"

@@ -124,7 +124,6 @@ export default function AddingPoints({
             cx={x}
             cy={y}
             fill={index < bodies.length - 1 || stop ? "grey" : "red"}
-            opacity={0}
           />
         ))}
       </g>

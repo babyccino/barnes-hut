@@ -1,3 +1,9 @@
+export interface BoundariesInterface {
+  centerX: number
+  centerY: number
+  size: number
+}
+
 export interface CentreOfMass {
   massX: number
   massY: number
@@ -9,7 +15,7 @@ export interface Body extends CentreOfMass {
   ySpeed: number
 }
 
-export abstract class QuadInterface implements CentreOfMass {
+export abstract class QuadInterface implements CentreOfMass, BoundariesInterface {
   massX: number
   massY: number
   mass: number
@@ -37,4 +43,28 @@ export abstract class QuadInterface implements CentreOfMass {
   }
 
   abstract insert(body: CentreOfMass): unknown
+}
+
+export class Boundaries implements BoundariesInterface {
+  xMin: number
+  yMin: number
+  xMax: number
+  yMax: number
+  // prettier-ignore
+  get width(): number { return this.xMax - this.xMin }
+  // prettier-ignore
+  get height(): number { return this.yMax - this.yMin }
+  // prettier-ignore
+  get size(): number { return Math.max(this.width, this.height) }
+  // prettier-ignore
+  get centerX(): number { return this.xMin + this.width / 2 }
+  // prettier-ignore
+  get centerY(): number { return this.yMin + this.height / 2 }
+
+  constructor(xMin: number, yMin: number, xMax: number, yMax: number) {
+    this.xMin = xMin
+    this.yMin = yMin
+    this.xMax = xMax
+    this.yMax = yMax
+  }
 }

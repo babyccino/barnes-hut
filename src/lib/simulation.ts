@@ -1,4 +1,4 @@
-import { Body, CentreOfMass, QuadInterface } from "./interface"
+import { Body, Boundaries, CentreOfMass, QuadInterface } from "./interface"
 import { distance, unitVector } from "./util"
 
 export class Empty extends QuadInterface {
@@ -151,30 +151,6 @@ export function getMassCentre(..._bodies: any[]): [number, number, number] {
   const massX = bodies.reduce((prev, body) => prev + body.mass * body.massX, 0) / mass
   const massY = bodies.reduce((prev, body) => prev + body.mass * body.massY, 0) / mass
   return [mass, massX, massY]
-}
-
-export class Boundaries {
-  xMin: number
-  yMin: number
-  xMax: number
-  yMax: number
-  // prettier-ignore
-  get width(): number { return this.xMax - this.xMin }
-  // prettier-ignore
-  get height(): number { return this.yMax - this.yMin }
-  // prettier-ignore
-  get size(): number { return Math.max(this.width, this.height) }
-  // prettier-ignore
-  get centerX(): number { return this.xMin + this.width / 2 }
-  // prettier-ignore
-  get centerY(): number { return this.yMin + this.height / 2 }
-
-  constructor(xMin: number, yMin: number, xMax: number, yMax: number) {
-    this.xMin = xMin
-    this.yMin = yMin
-    this.xMax = xMax
-    this.yMax = yMax
-  }
 }
 
 export function getBoundaries(nodes: CentreOfMass[]): Boundaries {

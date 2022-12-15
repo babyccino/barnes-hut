@@ -12,8 +12,8 @@ const Y_MAX = 2500
 const padding = 15
 const boundaries = new Boundaries(padding, padding, X_MAX - padding, Y_MAX - padding)
 
-const circleAnimationDuration = 0.7
-const delayBetweenCircleAndLines = 0.3
+const bodyAnimationDuration = 0.7
+const delayBetweenBodyAndLines = 0.3
 const lineAnimationDuration = 1
 const delayBeforeNextLoop = 0.5
 
@@ -46,7 +46,7 @@ export default function AddingPoints({
         BoundariesInterface & { delay: number }
       >((q, index) => ({
         ...q,
-        delay: circleAnimationDuration + delayBetweenCircleAndLines + index * lineAnimationDuration,
+        delay: bodyAnimationDuration + delayBetweenBodyAndLines + index * lineAnimationDuration,
       }))
 
       setBodies(prev => [...prev, body])
@@ -56,8 +56,8 @@ export default function AddingPoints({
 
       lastQuadRef.current = newQuad
       const totalLoopTime =
-        circleAnimationDuration +
-        delayBetweenCircleAndLines +
+        bodyAnimationDuration +
+        delayBetweenBodyAndLines +
         addedQuads.length * lineAnimationDuration +
         delayBeforeNextLoop
       timeoutRef.current = setTimeout(() => renderLoop(i + 1), totalLoopTime * 1000)
@@ -118,7 +118,7 @@ export default function AddingPoints({
         {bodies.map(({ massX: x, massY: y, mass }, index) => (
           <circle
             style={{ scale: index < bodies.length - 1 || stop ? "1" : "4" }}
-            className={styles.circle + " fadeIn"}
+            className={styles.body + " fadeIn"}
             r={Math.min(mass * 2, 8)}
             key={`${x}:${y}`}
             cx={x}

@@ -42,98 +42,87 @@ export default function Home(): JSX.Element {
   }
 
   return (
-    <div>
-      <Head>
-        <title>The Barnes-Hut Simulation</title>
-        <meta
-          name="description"
-          content="A visualisation of the Barnes-Hut simulation for n-body systems"
-        />
-        <link rel="icon" href="/favicon.svg" />
-      </Head>
-
-      <main className="flex justify-end w-1/2 py-6">
-        <Simulation
-          className="fixed left-1/2 top-1/2 -translate-y-1/2 w-full h-full max-w-[50%] 
+    <main className="flex justify-end w-1/2 py-6">
+      <Simulation
+        className="fixed left-1/2 top-1/2 -translate-y-1/2 w-full h-full max-w-[50%] 
             max-h-full"
-          nodeCount={nodeCount}
-          running={simRunning}
-          renderCalculatedQuads={renderCalculatedQuads}
-          renderUncalcuatedQuads={renderUncalcuatedQuads}
-          theta={theta}
-        />
+        nodeCount={nodeCount}
+        running={simRunning}
+        renderCalculatedQuads={renderCalculatedQuads}
+        renderUncalcuatedQuads={renderUncalcuatedQuads}
+        theta={theta}
+      />
 
-        <div className="relative right-0 w-full max-w-xl space-y-4">
-          <h1 className="text-3xl font-bold py-2 pb-4">The Barnes-Hut Simulation</h1>
-          <p>
-            The Barnes-Hut simulation is an algorithm for estimating the forces in an n-body system.
-            While the brute force method is a quintessential example of an&nbsp;
-            <Math>
-              O(n<sup>2</sup>)
-            </Math>
-            &nbsp;algorithm, the Barnes-Hut simulation, using a quadtree (or octree for a 3d
-            simulation), can estimate an n-body system with low error at&nbsp;
-            <Math>O(n*log(n))</Math>.
-          </p>
-          <p>
-            The main idea in the estimation is that a group of far away bodies can be approximated
-            using a combined body with the total mass and centre of mass of the system. In the
-            Barnes-Hut simulation this is achieved using a quadtree. Each node of the quadtree can
-            be either: an empty node; a leaf containing one body; or a fork. The fork itself has
-            four nodes corresponding to equally sized quadrants which are themselves a node of some
-            kind. Each fork keeps track of its total mass and centre of mass so if a body is
-            sufficiently distant, forces can be estimated using these values instead of calculating
-            the force for every node
-          </p>
-          <div className="flex flex-row py-2 gap-4 w-[90%] m-auto">
-            <label htmlFor="nodeCount">Number of bodies</label>
-            <input
-              className="grow"
-              type="range"
-              name="nodeCount"
-              min="1"
-              max={MAX_GALAXY_SIZE}
-              defaultValue={MAX_GALAXY_SIZE}
-              step={1}
-              onChange={onNodeCount}
-            />
-            <div>{nodeCount}</div>
-          </div>
-          <p>
-            The heuristic used to determine whether a force calculation will use the combined centre
-            of mass or recursively calculate for the nodes within a fork is simply the ratio between
-            distance to and size of the fork. If this greater than a chosen value theta then the
-            estimation be used and vice versa. Decreasing theta will give a more accurate simulation
-            at the cost of speed and vice versa. A theta value of zero will just give the brute
-            force algorithm
-          </p>
-          <div className="flex flex-row gap-4 py-2 w-[90%] m-auto">
-            <label htmlFor="theta">Theta</label>
-            <input
-              className="grow"
-              type="range"
-              name="theta"
-              min="0"
-              max="2"
-              defaultValue={0.5}
-              step={0.1}
-              onChange={onTheta}
-            />
-            <div>{theta}</div>
-          </div>
-          <div className="w-full flex justify-center gap-6">
-            <Button
-              onClick={() => {
-                turnOffGraphics()
-                setSimRunning((state) => !state)
-              }}
-            >
-              Start/stop
-            </Button>
-            <Button onClick={turnOffGraphics}>Turn off graphics</Button>
-          </div>
+      <div className="relative right-0 w-full max-w-xl space-y-4">
+        <h1 className="text-3xl font-bold py-2 pb-4">The Barnes-Hut Simulation</h1>
+        <p>
+          The Barnes-Hut simulation is an algorithm for estimating the forces in an n-body system.
+          While the brute force method is a quintessential example of an&nbsp;
+          <Math>
+            O(n<sup>2</sup>)
+          </Math>
+          &nbsp;algorithm, the Barnes-Hut simulation, using a quadtree (or octree for a 3d
+          simulation), can estimate an n-body system with low error at&nbsp;
+          <Math>O(n*log(n))</Math>.
+        </p>
+        <p>
+          The main idea in the estimation is that a group of far away bodies can be approximated
+          using a combined body with the total mass and centre of mass of the system. In the
+          Barnes-Hut simulation this is achieved using a quadtree. Each node of the quadtree can be
+          either: an empty node; a leaf containing one body; or a fork. The fork itself has four
+          nodes corresponding to equally sized quadrants which are themselves a node of some kind.
+          Each fork keeps track of its total mass and centre of mass so if a body is sufficiently
+          distant, forces can be estimated using these values instead of calculating the force for
+          every node
+        </p>
+        <div className="flex flex-row py-2 gap-4 w-[90%] m-auto">
+          <label htmlFor="nodeCount">Number of bodies</label>
+          <input
+            className="grow"
+            type="range"
+            name="nodeCount"
+            min="1"
+            max={MAX_GALAXY_SIZE}
+            defaultValue={MAX_GALAXY_SIZE}
+            step={1}
+            onChange={onNodeCount}
+          />
+          <div>{nodeCount}</div>
         </div>
-      </main>
-    </div>
+        <p>
+          The heuristic used to determine whether a force calculation will use the combined centre
+          of mass or recursively calculate for the nodes within a fork is simply the ratio between
+          distance to and size of the fork. If this greater than a chosen value theta then the
+          estimation be used and vice versa. Decreasing theta will give a more accurate simulation
+          at the cost of speed and vice versa. A theta value of zero will just give the brute force
+          algorithm
+        </p>
+        <div className="flex flex-row gap-4 py-2 w-[90%] m-auto">
+          <label htmlFor="theta">Theta</label>
+          <input
+            className="grow"
+            type="range"
+            name="theta"
+            min="0"
+            max="2"
+            defaultValue={0.5}
+            step={0.1}
+            onChange={onTheta}
+          />
+          <div>{theta}</div>
+        </div>
+        <div className="w-full flex justify-center gap-6">
+          <Button
+            onClick={() => {
+              turnOffGraphics()
+              setSimRunning((state) => !state)
+            }}
+          >
+            Start/stop
+          </Button>
+          <Button onClick={turnOffGraphics}>Turn off graphics</Button>
+        </div>
+      </div>
+    </main>
   )
 }

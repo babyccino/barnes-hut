@@ -45,6 +45,13 @@ export abstract class QuadInterface implements CentreOfMass, BoundariesInterface
   abstract insert(body: CentreOfMass): unknown
 }
 
+export interface ForkInterface {
+  nw: QuadInterface
+  ne: QuadInterface
+  sw: QuadInterface
+  se: QuadInterface
+}
+
 export class Boundaries implements BoundariesInterface {
   xMin: number
   yMin: number

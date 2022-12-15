@@ -1,5 +1,5 @@
-import { Body, Boundaries, CentreOfMass, QuadInterface } from "./interface"
-import { distance, unitVector } from "./util"
+import { Body, Boundaries, CentreOfMass, ForkInterface, QuadInterface } from "./interface"
+import { distance, getQuadrant, unitVector } from "./util"
 
 export class Empty extends QuadInterface {
   constructor(centerX: number, centerY: number, size: number) {
@@ -53,7 +53,7 @@ export class Leaf extends QuadInterface {
     }
   }
 }
-export class Fork extends QuadInterface {
+export class Fork extends QuadInterface implements ForkInterface {
   nw: Quad
   ne: Quad
   sw: Quad
@@ -81,13 +81,8 @@ export class Fork extends QuadInterface {
   insert(body: CentreOfMass): Fork {
     ++this.total
 
-    const belowMiddle = body.massY > this.centerY
-    const rightOfMiddle = body.massX > this.centerX
-
-    if (belowMiddle && rightOfMiddle) this.se = this.se.insert(body)
-    else if (belowMiddle && !rightOfMiddle) this.sw = this.sw.insert(body)
-    else if (!belowMiddle && rightOfMiddle) this.ne = this.ne.insert(body)
-    else this.nw = this.nw.insert(body)
+    const quadrant = getQuadrant(body, this)
+    this[quadrant] = this[quadrant].insert(body)
 
     return this.update()
   }
@@ -195,17 +190,9 @@ export function createQuadAndInsertBodies(
 }
 
 export function getQuadForBody(body: CentreOfMass, quad: Quad): Leaf | null {
-  const belowMiddle = body.massY > quad.centerY
-  const rightOfMiddle = body.massX > quad.centerX
-
-  if (quad instanceof Fork) {
-    if (belowMiddle && rightOfMiddle) return getQuadForBody(body, quad.se)
-    else if (belowMiddle && !rightOfMiddle) return getQuadForBody(body, quad.sw)
-    else if (!belowMiddle && rightOfMiddle) return getQuadForBody(body, quad.ne)
-    else return getQuadForBody(body, quad.nw)
-  } else if (quad instanceof Leaf && quad.bodies.includes(body)) {
-    return quad
-  } else return null
+  if (quad instanceof Fork) return getQuadForBody(body, quad[getQuadrant(body, quad)])
+  else if (quad instanceof Leaf && quad.bodies.includes(body)) return quad
+  else return null
 }
 
 export function update(body: Body, quad: Quad): Body {

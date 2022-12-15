@@ -49,8 +49,8 @@ export default function AddingPoints({
         delay: circleAnimationDuration + delayBetweenCircleAndLines + index * lineAnimationDuration,
       }))
 
-      setBodies((prev) => [...prev, body])
-      setQuads((prev) => [...prev, ...addedQuads])
+      setBodies(prev => [...prev, body])
+      setQuads(prev => [...prev, ...addedQuads])
 
       console.log({ addedQuads, i, newQuad, lastQuad: lastQuadRef.current })
 

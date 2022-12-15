@@ -35,13 +35,13 @@ export default function Home(): JSX.Element {
   const [showAddingPoints, setShowAddingPoints] = useState<AddingPointsState>(
     AddingPointsState.UnMounted
   )
-  const onNodeCount: ChangeEventHandler<HTMLInputElement> = (e) => {
+  const onNodeCount: ChangeEventHandler<HTMLInputElement> = e => {
     setNodeCount(e.target.valueAsNumber)
     setSimRunning(false)
     setRenderCalculatedQuads(false)
     setRenderUncalcuatedQuads(true)
   }
-  const onTheta: ChangeEventHandler<HTMLInputElement> = (e) => {
+  const onTheta: ChangeEventHandler<HTMLInputElement> = e => {
     setSimRunning(true)
     setRenderCalculatedQuads(true)
     setRenderUncalcuatedQuads(true)
@@ -69,7 +69,7 @@ export default function Home(): JSX.Element {
   }
   const startStop = (): void => {
     turnOffGraphics()
-    setSimRunning((state) => !state)
+    setSimRunning(state => !state)
   }
 
   return (

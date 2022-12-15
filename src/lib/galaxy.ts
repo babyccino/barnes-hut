@@ -48,8 +48,8 @@ function init2Galaxies(totalBodies: number): Body[] {
     }
   }
 
-  galaxy((totalBodies / 8) * 7, 350.0, 400, 400, 10, 12)
-  galaxy(totalBodies / 8, 300, 2200, 1600, -10, -12)
+  galaxy((totalBodies / 5) * 4, 350.0, 400, 400, 10, 12)
+  galaxy(totalBodies / 5, 300, 2200, 1600, -10, -12)
 
   return bodies
 }

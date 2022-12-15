@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, SVGProps } from "react"
 import { GALAXY } from "../lib/galaxy"
 import { Body, CentreOfMass } from "../lib/interface"
-import { getAllLines, getLines, Line } from "../lib/lines"
+import { getAllLines, getLines } from "../lib/lines"
 import {
   renderCircle,
   renderLine,
@@ -10,10 +10,8 @@ import {
   SVGNS,
 } from "../lib/render"
 import {
-  Boundaries,
   createQuadAndInsertBodies,
   eliminateOutliers,
-  Empty,
   Fork,
   getBoundaries,
   getQuadForBody,
@@ -141,8 +139,6 @@ export default function Simulation({
         : createNode(svg as SVGSVGElement, node, "grey", 1)
     )
     const nodes = nodesRef.current
-
-    highlightLastNode(svg, nodes, clearables)
   }, [nodeCount])
 
   return <svg {...props} ref={svgRef} viewBox={`0 0 ${X_MAX} ${Y_MAX}`} />

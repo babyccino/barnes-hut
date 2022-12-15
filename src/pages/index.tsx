@@ -1,9 +1,8 @@
 import { ChangeEventHandler, useState, ReactNode, HTMLProps } from "react"
-import Head from "next/head"
 
 import Simulation from "../components/simulation"
 import { MAX_GALAXY_SIZE } from "../lib/galaxy"
-import AddingPoints from "../components/addingPoints/addingPoints"
+import QuadtreeAnimation from "../components/quadtreeAnimation/"
 
 const Button = ({ onClick, children }: HTMLProps<HTMLButtonElement>) => (
   <button
@@ -19,7 +18,7 @@ const Math = ({ children }: { children: ReactNode }) => (
   <span className="italic font-serif">{children}</span>
 )
 
-enum AddingPointsState {
+enum ComponentState {
   UnMounted,
   Mounting,
   Mounted,
@@ -32,7 +31,7 @@ export default function Home(): JSX.Element {
   const [renderCalculatedQuads, setRenderCalculatedQuads] = useState(false)
   const [renderUncalcuatedQuads, setRenderUncalcuatedQuads] = useState(false)
   const [nodeCount, setNodeCount] = useState(MAX_GALAXY_SIZE)
-  const [showAddingPoints, setShowAddingPoints] = useState(AddingPointsState.UnMounted)
+  const [quadtreeState, setQuadtreeState] = useState(ComponentState.UnMounted)
 
   const onNodeCount: ChangeEventHandler<HTMLInputElement> = e => {
     setNodeCount(e.target.valueAsNumber)
@@ -51,17 +50,17 @@ export default function Home(): JSX.Element {
     setRenderUncalcuatedQuads(false)
   }
   const toggleAddingPoints = (): void => {
-    if (showAddingPoints === AddingPointsState.Mounted) {
-      setShowAddingPoints(AddingPointsState.UnMounting)
+    if (quadtreeState === ComponentState.Mounted) {
+      setQuadtreeState(ComponentState.UnMounting)
       setTimeout(() => {
-        setShowAddingPoints(AddingPointsState.UnMounted)
+        setQuadtreeState(ComponentState.UnMounted)
         setSimRunning(true)
       }, 1000)
     }
-    if (showAddingPoints === AddingPointsState.UnMounted) {
-      setShowAddingPoints(AddingPointsState.Mounting)
+    if (quadtreeState === ComponentState.UnMounted) {
+      setQuadtreeState(ComponentState.Mounting)
       setTimeout(() => {
-        setShowAddingPoints(AddingPointsState.Mounted)
+        setQuadtreeState(ComponentState.Mounted)
         setSimRunning(false)
       }, 1000)
     }
@@ -73,10 +72,10 @@ export default function Home(): JSX.Element {
 
   return (
     <main className="flex justify-end sm:w-1/2 py-6 px-6">
-      {showAddingPoints !== AddingPointsState.Mounted ? (
+      {quadtreeState !== ComponentState.Mounted ? (
         <Simulation
           className={`fixed sm:left-1/2 sm:top-1/2 sm:-translate-y-1/2 w-full h-full sm:max-w-[50%] max-h-full ${
-            showAddingPoints === AddingPointsState.Mounting ? "fadeOut" : "fadeIn"
+            quadtreeState === ComponentState.Mounting ? "fadeOut" : "fadeIn"
           }`}
           nodeCount={nodeCount}
           running={simRunning}
@@ -85,12 +84,12 @@ export default function Home(): JSX.Element {
           theta={theta}
         />
       ) : null}
-      {showAddingPoints !== AddingPointsState.UnMounted ? (
-        <AddingPoints
+      {quadtreeState !== ComponentState.UnMounted ? (
+        <QuadtreeAnimation
           style={{ animationDelay: "300ms" }}
           className={`fixed sm:left-1/2 sm:top-1/2 sm:-translate-y-1/2 w-full h-full sm:max-w-[50%] 
-            max-h-full ${showAddingPoints === AddingPointsState.UnMounting ? "fadeOut" : "fadeIn"}`}
-          stop={showAddingPoints === AddingPointsState.UnMounting}
+            max-h-full ${quadtreeState === ComponentState.UnMounting ? "fadeOut" : "fadeIn"}`}
+          stop={quadtreeState === ComponentState.UnMounting}
         />
       ) : null}
 
@@ -117,7 +116,7 @@ export default function Home(): JSX.Element {
             defaultValue={MAX_GALAXY_SIZE}
             step={1}
             onChange={onNodeCount}
-            disabled={showAddingPoints !== AddingPointsState.UnMounted}
+            disabled={quadtreeState !== ComponentState.UnMounted}
           />
           <div className="align-middle">{nodeCount}</div>
         </div>

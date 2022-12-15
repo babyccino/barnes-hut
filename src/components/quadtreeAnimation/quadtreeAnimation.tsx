@@ -1,5 +1,5 @@
 import { CSSProperties, SVGProps, useEffect, useRef, useState } from "react"
-import styles from "./addingPoints.module.scss"
+import styles from "./quadtreeAnimation.module.scss"
 
 import { GALAXY } from "../../lib/galaxy"
 import { Boundaries, BoundariesInterface, CentreOfMass } from "../../lib/interface"
@@ -17,7 +17,7 @@ const delayBetweenBodyAndLines = 0.3
 const lineAnimationDuration = 1
 const delayBeforeNextLoop = 0.5
 
-export default function AddingPoints({
+export default function QuadtreeAnimation({
   stop,
   ...props
 }: { stop?: boolean } & SVGProps<SVGSVGElement>): JSX.Element {

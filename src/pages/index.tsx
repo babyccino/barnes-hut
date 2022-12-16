@@ -90,7 +90,7 @@ export default function Home(): JSX.Element {
     <main className="flex justify-end sm:w-1/2">
       {quadtreeState !== ComponentState.Mounted ? (
         <Simulation
-          className={`fixed sm:left-1/2 sm:top-1/2 sm:-translate-y-1/2 w-full h-full sm:max-w-[50%]
+          className={`fixed w-full bottom-1/2 translate-y-1/2 sm:left-1/2 sm:max-w-[50%]
             max-h-full ${quadtreeState === ComponentState.Mounting ? "fadeOut" : "fadeIn"}`}
           nodeCount={nodeCount}
           running={simRunning}
@@ -102,7 +102,7 @@ export default function Home(): JSX.Element {
       {quadtreeState !== ComponentState.UnMounted ? (
         <QuadtreeAnimation
           style={{ animationDelay: "300ms" }}
-          className={`fixed sm:left-1/2 sm:top-1/2 sm:-translate-y-1/2 w-full h-full sm:max-w-[50%] 
+          className={`fixed w-full bottom-1/2 translate-y-1/2 sm:left-1/2 sm:max-w-[50%]
             max-h-full ${quadtreeState === ComponentState.UnMounting ? "fadeOut" : "fadeIn"}`}
           stop={quadtreeState === ComponentState.UnMounting}
         />

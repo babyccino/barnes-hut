@@ -1,10 +1,9 @@
 import { Body } from "./interface"
 import { GEE } from "./simulation"
-import { rand } from "./util"
+import { interweaveArrays, rand } from "./util"
 
 export const MAX_GALAXY_SIZE = 500
 function init2Galaxies(totalBodies: number): Body[] {
-  const bodies: Body[] = []
   function galaxy(
     num: number,
     maxRadius: number,
@@ -12,18 +11,19 @@ function init2Galaxies(totalBodies: number): Body[] {
     galaxyY: number,
     galaxySpeedX: number,
     galaxySpeedY: number
-  ): void {
+  ): Body[] {
+    const bodies: Body[] = Array(num)
     const totalM = 1.5 * num
     const blackHoleM = 1.0 * num
 
     // black hole
-    bodies.push({
+    bodies[0] = {
       mass: blackHoleM,
       massX: galaxyX,
       massY: galaxyY,
       xSpeed: galaxySpeedX,
       ySpeed: galaxySpeedY,
-    })
+    }
 
     // stars
     for (let i = 1; i < num; ++i) {
@@ -38,19 +38,19 @@ function init2Galaxies(totalBodies: number): Body[] {
       const starSpeedX = galaxySpeedX + speed * Math.sin(angle + Math.PI / 2)
       const starMass = 1.0 + rand(0, 1)
 
-      bodies.push({
+      bodies[i] = {
         mass: starMass,
         massX: starX,
         massY: starY,
         xSpeed: starSpeedX,
         ySpeed: starSpeedY,
-      })
+      }
     }
+    return bodies
   }
 
-  galaxy((totalBodies / 5) * 4, 350.0, 400, 400, 10, 12)
-  galaxy(totalBodies / 5, 300, 2200, 1600, -10, -12)
-
-  return bodies
+  const larger = galaxy((totalBodies / 5) * 4, 350.0, 400, 400, 10, 12)
+  const smaller = galaxy(totalBodies / 5, 300, 2200, 1600, -10, -12)
+  return interweaveArrays(larger, smaller)
 }
 export const GALAXY = init2Galaxies(MAX_GALAXY_SIZE)

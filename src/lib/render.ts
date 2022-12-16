@@ -1,10 +1,43 @@
-import { SvgNode } from "../components/simulation"
+import { GALAXY } from "./galaxy"
 import { Body, BoundariesInterface, CentreOfMass, QuadBase } from "./interface"
-import { Line } from "./lines"
-import { Empty, Leaf, Quad, Fork } from "./simulation"
+import { getAllLines, Line } from "./lines"
+import {
+  Empty,
+  Leaf,
+  Quad,
+  Fork,
+  createQuadAndInsertBodies,
+  getBoundaries,
+  getQuadForBody,
+} from "./simulation"
 import { getQuadrant } from "./util"
 
 export const SVGNS = "http://www.w3.org/2000/svg"
+
+export interface SvgNode extends Body {
+  el: SVGCircleElement
+  color: string
+}
+
+export function createNode(
+  svg: SVGSVGElement,
+  node: Body,
+  color: string,
+  opacity: number,
+  blackHole: boolean = false
+): SvgNode {
+  const el = document.createElementNS(SVGNS, "circle")
+  el.setAttributeNS(null, "cx", node.massX.toString())
+  el.setAttributeNS(null, "cy", node.massY.toString())
+  el.setAttributeNS(null, "r", blackHole ? "8" : (node.mass * 4).toString())
+  el.setAttributeNS(null, "fill", color)
+  el.setAttributeNS(null, "opacity", opacity.toString())
+  svg.appendChild(el)
+
+  const newNode: SvgNode = Object.assign({ el, color }, node)
+
+  return newNode
+}
 
 export function removeNodes(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
   while (count--) {
@@ -130,4 +163,35 @@ export function newLines(
   const quadrant = getQuadrant(newBody, newQuad)
 
   return newLines(newBody, newQuad[quadrant], oldQuad[quadrant])
+}
+
+export function highlightLastBody(
+  svg: SVGSVGElement,
+  bodies: Body[],
+  clearables: SVGElement[]
+): void {
+  const body = bodies.at(-1)
+  if (body === undefined) return
+
+  const boundaries = getBoundaries(GALAXY)
+  const quad = createQuadAndInsertBodies(
+    boundaries.centerX,
+    boundaries.centerY,
+    boundaries.size,
+    bodies
+  )
+
+  const [horizontalLines, verticalLines] = getAllLines(quad)
+  horizontalLines.forEach((intervals, y) => {
+    intervals.forEach(line => clearables.push(renderLine(svg, line, true, y, "grey", 0.5)))
+  })
+  verticalLines.forEach((intervals, x) => {
+    intervals.forEach(line => clearables.push(renderLine(svg, line, false, x, "grey", 0.5)))
+  })
+
+  const leaf = getQuadForBody(body, quad) as Leaf
+  clearables.push(renderRectangle(svg, leaf, "red", 1))
+  clearables.push(
+    renderCircle(svg, { ...body, mass: (body.mass > 2 ? 8 : body.mass) * 4 }, "red", 1)
+  )
 }

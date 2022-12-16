@@ -3,11 +3,12 @@ import { GALAXY } from "../lib/galaxy"
 import { Body, CentreOfMass } from "../lib/interface"
 import { getAllLines, getLines } from "../lib/lines"
 import {
+  createNode,
   renderCircle,
   renderLine,
   renderLineBetweenBodies,
   renderRectangle,
-  SVGNS,
+  SvgNode,
 } from "../lib/render"
 import {
   createQuadAndInsertBodies,
@@ -138,37 +139,9 @@ export default function Simulation({
         ? createNode(svg as SVGSVGElement, node, "black", 1, true)
         : createNode(svg as SVGSVGElement, node, "grey", 1)
     )
-    const nodes = nodesRef.current
   }, [nodeCount])
 
   return <svg {...props} ref={svgRef} viewBox={`0 0 ${X_MAX} ${Y_MAX}`} />
-}
-
-function highlightLastNode(svg: SVGSVGElement, bodies: Body[], clearables: SVGElement[]): void {
-  const body = bodies.at(-1)
-  if (body === undefined) return
-
-  const boundaries = getBoundaries(GALAXY)
-  const quad = createQuadAndInsertBodies(
-    boundaries.centerX,
-    boundaries.centerY,
-    boundaries.size,
-    bodies
-  )
-
-  const [horizontalLines, verticalLines] = getAllLines(quad)
-  horizontalLines.forEach((intervals, y) => {
-    intervals.forEach(line => clearables.push(renderLine(svg, line, true, y, "grey", 0.5)))
-  })
-  verticalLines.forEach((intervals, x) => {
-    intervals.forEach(line => clearables.push(renderLine(svg, line, false, x, "grey", 0.5)))
-  })
-
-  const leaf = getQuadForBody(body, quad) as Leaf
-  clearables.push(renderRectangle(svg, leaf, "red", 1))
-  clearables.push(
-    renderCircle(svg, { ...body, mass: (body.mass > 2 ? 8 : body.mass) * 4 }, "red", 1)
-  )
 }
 
 function fullClear(svg: SVGSVGElement | null, nodes: SvgNode[], clearables: SVGElement[]): void {
@@ -194,31 +167,6 @@ const range = (from: number, to: number): number[] =>
 
 const X_MAX = 2500
 const Y_MAX = 2500
-
-export interface SvgNode extends Body {
-  el: SVGCircleElement
-  color: string
-}
-
-function createNode(
-  svg: SVGSVGElement,
-  node: Body,
-  color: string,
-  opacity: number,
-  blackHole: boolean = false
-): SvgNode {
-  const el = document.createElementNS(SVGNS, "circle")
-  el.setAttributeNS(null, "cx", node.massX.toString())
-  el.setAttributeNS(null, "cy", node.massY.toString())
-  el.setAttributeNS(null, "r", blackHole ? "8" : (node.mass * 2).toString())
-  el.setAttributeNS(null, "fill", color)
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  svg.appendChild(el)
-
-  const newNode: SvgNode = Object.assign({ el, color }, node)
-
-  return newNode
-}
 
 function randomlyDistributedPoints(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
   while (count--) {

@@ -134,12 +134,12 @@ export default function Home(): JSX.Element {
           <Button onClick={toggleAddingPoints}>Show how the quadtree is constructed</Button>
         </div>
         <p>
-          The threshold used to determine whether a force calculation will use the combined centre
-          of mass or recursively calculate for the nodes within a fork is simply the ratio between
-          distance to and size of the fork. If this greater than a chosen value theta then the
-          estimation be used and vice versa. Decreasing theta will give a more accurate simulation
-          at the cost of speed and vice versa. A theta value of zero will just give the brute force
-          algorithm
+          Whether a force calculation will use the combined centre of mass or recursively calculate
+          for the nodes within a fork is dependant the ratio between distance to and size of the
+          fork. If this greater than a chosen value, theta, then the estimation be used and vice
+          versa. Decreasing theta will give a more accurate simulation at the cost of speed and
+          while a greater value will give a less computationally expensive simulation at the cost of
+          accuracy. A theta value of zero will just give the brute force algorithm
         </p>
         <div className="flex flex-row gap-4 py-2 w-[90%] m-auto">
           <label htmlFor="theta">Theta</label>

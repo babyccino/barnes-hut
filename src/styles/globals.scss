@@ -64,3 +64,17 @@ a {
     opacity: 0;
   }
 }
+
+// copy of tailwind's space class but using padding instead of margin
+// to maintain the backdrop filter's coverage
+.space-y-4-padding > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  padding-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
+  padding-bottom: calc(1rem * var(--tw-space-y-reverse));
+}
+
+.space-y-6-padding > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  padding-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));
+  padding-bottom: calc(1.5rem * var(--tw-space-y-reverse));
+}

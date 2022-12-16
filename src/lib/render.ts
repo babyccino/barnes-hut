@@ -58,7 +58,7 @@ export function renderLine(
   const [x1, x2] = horizontal ? line : [transverse, transverse]
   const [y1, y2] = horizontal ? [transverse, transverse] : line
 
-  return renderLineSegment(svg, [x1, y1, x2, y2], color, opacity)
+  return renderLineSegment(svg, [x1, y1, x2, y2], color, opacity, 2)
 }
 
 export function renderLineBetweenBodies(
@@ -70,14 +70,15 @@ export function renderLineBetweenBodies(
 ): SVGLineElement {
   const line = [body1.massX, body1.massY, body2.massX, body2.massY] as const
 
-  return renderLineSegment(svg, line, color, opacity)
+  return renderLineSegment(svg, line, color, opacity, 4)
 }
 
 export function renderLineSegment(
   svg: SVGSVGElement,
   line: readonly [number, number, number, number],
   color: string,
-  opacity: number
+  opacity: number,
+  strokeWidth: number
 ): SVGLineElement {
   const el = document.createElementNS(SVGNS, "line")
   const [x1, y1, x2, y2] = line
@@ -88,7 +89,7 @@ export function renderLineSegment(
   el.setAttributeNS(null, "y2", y2.toString())
 
   el.setAttributeNS(null, "stroke", color)
-  el.setAttributeNS(null, "stroke-width", "1")
+  el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
   el.setAttributeNS(null, "opacity", opacity.toString())
   el.setAttributeNS(null, "stroke-dasharray", "4 6")
   svg.appendChild(el)
@@ -123,7 +124,7 @@ export function renderCircle(
   body: CentreOfMass,
   color: string,
   opacity: number = 1,
-  size: number = 0.7 * (body.mass - 1) + 1
+  size: number = 0.7 * (body.mass - 1) + 4
 ): SVGCircleElement {
   const el = document.createElementNS(SVGNS, "circle")
   el.setAttributeNS(null, "cx", body.massX.toString())
@@ -138,31 +139,40 @@ export function renderCircle(
 function foundAddedQuad(
   newBody: Body,
   newQuad: Quad,
-  addedQuads: BoundariesInterface[]
+  addedQuads: BoundariesInterface[],
+  depthLimit: number = Number.MAX_VALUE,
+  depth: number = 0
 ): BoundariesInterface[] {
-  if (!(newQuad instanceof Fork)) return addedQuads
+  if (!(newQuad instanceof Fork) || depth > depthLimit) return addedQuads
 
-  const newAddedQuads = [...addedQuads, newQuad]
-
-  return foundAddedQuad(newBody, newQuad[getQuadrant(newBody, newQuad)], newAddedQuads)
+  addedQuads.push(newQuad)
+  return foundAddedQuad(
+    newBody,
+    newQuad[getQuadrant(newBody, newQuad)],
+    addedQuads,
+    depthLimit,
+    depth + 1
+  )
 }
 
 export function newLines(
   newBody: Body,
   newQuad: Quad,
-  oldQuad: Quad | null
+  oldQuad: Quad | null,
+  depthLimit: number = Number.MAX_VALUE,
+  depth: number = 0
 ): BoundariesInterface[] {
-  if (!(newQuad instanceof Fork)) return []
+  if (!(newQuad instanceof Fork) || depth > depthLimit) return []
   // if we have reached a new fork add the lines
   // (because newquad is still a fork but the old one is no longer)
   // continue adding lines from here on in by making oldQuad null
   if (oldQuad === null || !(oldQuad instanceof Fork)) {
-    return foundAddedQuad(newBody, newQuad, [])
+    return foundAddedQuad(newBody, newQuad, [], depthLimit, depth)
   }
 
   const quadrant = getQuadrant(newBody, newQuad)
 
-  return newLines(newBody, newQuad[quadrant], oldQuad[quadrant])
+  return newLines(newBody, newQuad[quadrant], oldQuad[quadrant], depthLimit, depth + 1)
 }
 
 export function highlightLastBody(

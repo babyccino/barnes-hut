@@ -11,8 +11,8 @@
   animation-iteration-count: 1;
 
   fill-opacity: 0;
-  stroke-width: 2;
-  stroke-dasharray: 4 6;
+  stroke-width: 0.15rem;
+  stroke-dasharray: 0.6rem 0.9rem;
   transition-property: opacity;
 }
 
@@ -27,6 +27,6 @@
   }
   to {
     stroke: grey;
-    opacity: 1;
+    opacity: 0.4;
   }
 }

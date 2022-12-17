@@ -1,10 +1,43 @@
-import { SvgNode } from "../components/simulation"
+import { GALAXY } from "./galaxy"
 import { Body, BoundariesInterface, CentreOfMass, QuadBase } from "./interface"
-import { Line } from "./lines"
-import { Empty, Leaf, Quad, Fork } from "./simulation"
+import { getAllLines, Line } from "./lines"
+import {
+  Empty,
+  Leaf,
+  Quad,
+  Fork,
+  createQuadAndInsertBodies,
+  getBoundaries,
+  getQuadForBody,
+} from "./simulation"
 import { getQuadrant } from "./util"
 
 export const SVGNS = "http://www.w3.org/2000/svg"
+
+export interface SvgNode extends Body {
+  el: SVGCircleElement
+  color: string
+}
+
+export function createNode(
+  svg: SVGSVGElement,
+  node: Body,
+  color: string,
+  opacity: number,
+  blackHole: boolean = false
+): SvgNode {
+  const el = document.createElementNS(SVGNS, "circle")
+  el.setAttributeNS(null, "cx", node.massX.toString())
+  el.setAttributeNS(null, "cy", node.massY.toString())
+  el.setAttributeNS(null, "r", blackHole ? "8" : (node.mass * 4).toString())
+  el.setAttributeNS(null, "fill", color)
+  el.setAttributeNS(null, "opacity", opacity.toString())
+  svg.appendChild(el)
+
+  const newNode: SvgNode = Object.assign({ el, color }, node)
+
+  return newNode
+}
 
 export function removeNodes(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
   while (count--) {
@@ -25,7 +58,7 @@ export function renderLine(
   const [x1, x2] = horizontal ? line : [transverse, transverse]
   const [y1, y2] = horizontal ? [transverse, transverse] : line
 
-  return renderLineSegment(svg, [x1, y1, x2, y2], color, opacity)
+  return renderLineSegment(svg, [x1, y1, x2, y2], color, opacity, 2)
 }
 
 export function renderLineBetweenBodies(
@@ -37,14 +70,15 @@ export function renderLineBetweenBodies(
 ): SVGLineElement {
   const line = [body1.massX, body1.massY, body2.massX, body2.massY] as const
 
-  return renderLineSegment(svg, line, color, opacity)
+  return renderLineSegment(svg, line, color, opacity, 4)
 }
 
 export function renderLineSegment(
   svg: SVGSVGElement,
   line: readonly [number, number, number, number],
   color: string,
-  opacity: number
+  opacity: number,
+  strokeWidth: number
 ): SVGLineElement {
   const el = document.createElementNS(SVGNS, "line")
   const [x1, y1, x2, y2] = line
@@ -55,7 +89,7 @@ export function renderLineSegment(
   el.setAttributeNS(null, "y2", y2.toString())
 
   el.setAttributeNS(null, "stroke", color)
-  el.setAttributeNS(null, "stroke-width", "1")
+  el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
   el.setAttributeNS(null, "opacity", opacity.toString())
   el.setAttributeNS(null, "stroke-dasharray", "4 6")
   svg.appendChild(el)
@@ -90,7 +124,7 @@ export function renderCircle(
   body: CentreOfMass,
   color: string,
   opacity: number = 1,
-  size: number = 0.7 * (body.mass - 1) + 1
+  size: number = 0.7 * (body.mass - 1) + 4
 ): SVGCircleElement {
   const el = document.createElementNS(SVGNS, "circle")
   el.setAttributeNS(null, "cx", body.massX.toString())
@@ -105,29 +139,69 @@ export function renderCircle(
 function foundAddedQuad(
   newBody: Body,
   newQuad: Quad,
-  addedQuads: BoundariesInterface[]
+  addedQuads: BoundariesInterface[],
+  depthLimit: number = Number.MAX_VALUE,
+  depth: number = 0
 ): BoundariesInterface[] {
-  if (!(newQuad instanceof Fork)) return addedQuads
+  if (!(newQuad instanceof Fork) || depth > depthLimit) return addedQuads
 
-  const newAddedQuads = [...addedQuads, newQuad]
-
-  return foundAddedQuad(newBody, newQuad[getQuadrant(newBody, newQuad)], newAddedQuads)
+  addedQuads.push(newQuad)
+  return foundAddedQuad(
+    newBody,
+    newQuad[getQuadrant(newBody, newQuad)],
+    addedQuads,
+    depthLimit,
+    depth + 1
+  )
 }
 
 export function newLines(
   newBody: Body,
   newQuad: Quad,
-  oldQuad: Quad | null
+  oldQuad: Quad | null,
+  depthLimit: number = Number.MAX_VALUE,
+  depth: number = 0
 ): BoundariesInterface[] {
-  if (!(newQuad instanceof Fork)) return []
+  if (!(newQuad instanceof Fork) || depth > depthLimit) return []
   // if we have reached a new fork add the lines
   // (because newquad is still a fork but the old one is no longer)
   // continue adding lines from here on in by making oldQuad null
   if (oldQuad === null || !(oldQuad instanceof Fork)) {
-    return foundAddedQuad(newBody, newQuad, [])
+    return foundAddedQuad(newBody, newQuad, [], depthLimit, depth)
   }
 
   const quadrant = getQuadrant(newBody, newQuad)
 
-  return newLines(newBody, newQuad[quadrant], oldQuad[quadrant])
+  return newLines(newBody, newQuad[quadrant], oldQuad[quadrant], depthLimit, depth + 1)
+}
+
+export function highlightLastBody(
+  svg: SVGSVGElement,
+  bodies: Body[],
+  clearables: SVGElement[]
+): void {
+  const body = bodies.at(-1)
+  if (body === undefined) return
+
+  const boundaries = getBoundaries(GALAXY)
+  const quad = createQuadAndInsertBodies(
+    boundaries.centerX,
+    boundaries.centerY,
+    boundaries.size,
+    bodies
+  )
+
+  const [horizontalLines, verticalLines] = getAllLines(quad)
+  horizontalLines.forEach((intervals, y) => {
+    intervals.forEach(line => clearables.push(renderLine(svg, line, true, y, "grey", 0.5)))
+  })
+  verticalLines.forEach((intervals, x) => {
+    intervals.forEach(line => clearables.push(renderLine(svg, line, false, x, "grey", 0.5)))
+  })
+
+  const leaf = getQuadForBody(body, quad) as Leaf
+  clearables.push(renderRectangle(svg, leaf, "red", 1))
+  clearables.push(
+    renderCircle(svg, { ...body, mass: (body.mass > 2 ? 8 : body.mass) * 4 }, "red", 1)
+  )
 }

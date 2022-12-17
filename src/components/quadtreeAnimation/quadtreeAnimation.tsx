@@ -1,10 +1,10 @@
-import { CSSProperties, SVGProps, useEffect, useRef, useState } from "react"
+import { SVGProps, useEffect, useRef, useState } from "react"
 import styles from "./quadtreeAnimation.module.scss"
 
 import { GALAXY } from "../../lib/galaxy"
 import { Boundaries, BoundariesInterface, CentreOfMass } from "../../lib/interface"
 import { newLines } from "../../lib/render"
-import { createQuadAndInsertBodies, Empty, getBoundaries, Quad } from "../../lib/simulation"
+import { createQuadAndInsertBodies, Empty, Quad } from "../../lib/simulation"
 
 const X_MAX = 2500
 const Y_MAX = 2500
@@ -17,12 +17,14 @@ const delayBetweenBodyAndLines = 0.3
 const lineAnimationDuration = 1
 const delayBeforeNextLoop = 0.5
 
+type QuadAndDelay = BoundariesInterface & { delay: number }
+
 export default function QuadtreeAnimation({
   stop,
   ...props
 }: { stop?: boolean } & SVGProps<SVGSVGElement>): JSX.Element {
   const [bodies, setBodies] = useState<CentreOfMass[]>([])
-  const [quads, setQuads] = useState<(BoundariesInterface & { delay: number })[]>([])
+  const [quads, setQuads] = useState<QuadAndDelay[]>([])
   const lastQuadRef = useRef<Quad>(new Empty(0, 0, 0))
   const timeoutRef = useRef<NodeJS.Timeout>()
 
@@ -42,17 +44,15 @@ export default function QuadtreeAnimation({
         bodies
       )
 
-      const addedQuads = newLines(body, newQuad, lastQuadRef.current).map<
-        BoundariesInterface & { delay: number }
-      >((q, index) => ({
-        ...q,
-        delay: bodyAnimationDuration + delayBetweenBodyAndLines + index * lineAnimationDuration,
-      }))
+      const addedQuads = newLines(body, newQuad, lastQuadRef.current, 4).map<QuadAndDelay>(
+        (q, index) => ({
+          ...q,
+          delay: bodyAnimationDuration + delayBetweenBodyAndLines + index * lineAnimationDuration,
+        })
+      )
 
       setBodies(prev => [...prev, body])
       setQuads(prev => [...prev, ...addedQuads])
-
-      console.log({ addedQuads, i, newQuad, lastQuad: lastQuadRef.current })
 
       lastQuadRef.current = newQuad
       const totalLoopTime =
@@ -76,50 +76,14 @@ export default function QuadtreeAnimation({
         y={boundaries.centerY - boundaries.size / 2}
         height={boundaries.size}
         width={boundaries.size}
-        stroke="grey"
       />
-      <g>
-        {quads.map(({ centerX, centerY, size, delay }, index) => {
-          const halfSize = size / 2
-          const minX = centerX - halfSize
-          const maxX = centerX + halfSize
-          const minY = centerY - halfSize
-          const maxY = centerY + halfSize
-
-          return (
-            <g key={`${centerX}:${centerY}`}>
-              <line
-                style={{
-                  animationDelay: delay + "s",
-                }}
-                className={styles.rect}
-                x1={minX}
-                x2={maxX}
-                y1={centerY}
-                y2={centerY}
-                stroke={index === quads.length - 1 ? "red" : "grey"}
-                opacity={0}
-              />
-              <line
-                style={{ animationDelay: delay + "s" }}
-                className={styles.rect}
-                x1={centerX}
-                x2={centerX}
-                y1={minY}
-                y2={maxY}
-                stroke={index === quads.length - 1 ? "red" : "grey"}
-                opacity={0}
-              />
-            </g>
-          )
-        })}
-      </g>
+      <g>{quads.map(Cross)}</g>
       <g>
         {bodies.map(({ massX: x, massY: y, mass }, index) => (
           <circle
             style={{ scale: index < bodies.length - 1 || stop ? "1" : "4" }}
             className={styles.body + " fadeIn"}
-            r={Math.min(mass * 2, 8)}
+            r={Math.min(mass * 4, 8)}
             key={`${x}:${y}`}
             cx={x}
             cy={y}
@@ -130,3 +94,24 @@ export default function QuadtreeAnimation({
     </svg>
   )
 }
+
+const Cross = ({ centerX, centerY, size, delay }: QuadAndDelay) => (
+  <g key={`${centerX}:${centerY}`}>
+    <line
+      style={{ animationDelay: delay + "s" }}
+      className={styles.rect}
+      x1={centerX - size / 2}
+      x2={centerX + size / 2}
+      y1={centerY}
+      y2={centerY}
+    />
+    <line
+      style={{ animationDelay: delay + "s" }}
+      className={styles.rect}
+      x1={centerX}
+      x2={centerX}
+      y1={centerY - size / 2}
+      y2={centerY + size / 2}
+    />
+  </g>
+)

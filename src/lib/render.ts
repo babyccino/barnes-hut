@@ -1,13 +1,18 @@
 import { GALAXY } from "./galaxy"
 import { Body, BoundariesInterface, CentreOfMass } from "./interface"
-import { Line, getAllLines } from "./lines"
+import { Line, getAllLines, getLines } from "./lines"
+import { Poolable, acquire, free } from "./pool"
 import {
   Fork,
   Leaf,
   Quad,
   createQuadAndInsertBodies,
+  eliminateOutliers,
   getBoundaries,
   getQuadForBody,
+  standardNBody,
+  update,
+  willCalc,
 } from "./simulation"
 import { getQuadrant } from "./util"
 
@@ -53,10 +58,19 @@ export function renderLine(
   transverse: number,
   color: string,
   opacity: number
-): SVGLineElement {
-  const [x1, x2] = horizontal ? line : [transverse, transverse]
-  const [y1, y2] = horizontal ? [transverse, transverse] : line
-
+) {
+  let x1, x2, y1, y2
+  if (horizontal) {
+    x1 = line[0]
+    x2 = line[1]
+    y1 = y2 = transverse
+    y2 = transverse
+  } else {
+    x1 = transverse
+    x2 = transverse
+    y1 = line[0]
+    y2 = line[1]
+  }
   return renderLineSegment(svg, [x1, y1, x2, y2], color, opacity, 2)
 }
 
@@ -66,73 +80,202 @@ export function renderLineBetweenBodies(
   body2: CentreOfMass,
   color: string,
   opacity: number
-): SVGLineElement {
+) {
   const line = [body1.massX, body1.massY, body2.massX, body2.massY] as const
 
   return renderLineSegment(svg, line, color, opacity, 4)
 }
 
+export class LineSegment
+  implements
+    Poolable<[SVGSVGElement, readonly [number, number, number, number], string, number, number]>
+{
+  el: SVGLineElement
+  svg: SVGSVGElement
+  color: string
+  opacity: number
+  strokeWidth: number
+
+  constructor(
+    svg: SVGSVGElement,
+    line: readonly [number, number, number, number],
+    color: string,
+    opacity: number,
+    strokeWidth: number
+  ) {
+    this.el = document.createElementNS(SVGNS, "line")
+    this.svg = svg
+    this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
+    this.color = color
+    this.opacity = opacity
+    this.strokeWidth = strokeWidth
+    this.el.setAttributeNS(null, "stroke", color)
+    this.el.setAttributeNS(null, "opacity", opacity.toString())
+    this.el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
+    this.set(svg, line, color, opacity, strokeWidth)
+    this.svg.appendChild(this.el)
+  }
+
+  set(
+    svg: SVGSVGElement,
+    line: readonly [number, number, number, number],
+    color: string,
+    opacity: number,
+    strokeWidth: number
+  ) {
+    const [x1, y1, x2, y2] = line
+    this.el.setAttributeNS(null, "x1", x1.toString())
+    this.el.setAttributeNS(null, "x2", x2.toString())
+    this.el.setAttributeNS(null, "y1", y1.toString())
+    this.el.setAttributeNS(null, "y2", y2.toString())
+
+    if (color !== this.color) {
+      this.el.setAttributeNS(null, "stroke", color)
+      this.color = color
+    }
+    if (opacity !== this.opacity) {
+      this.el.setAttributeNS(null, "opacity", opacity.toString())
+      this.opacity = opacity
+    }
+    if (strokeWidth !== this.strokeWidth) {
+      this.el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
+      this.strokeWidth = strokeWidth
+    }
+  }
+
+  free() {
+    this.el.setAttributeNS(null, "opacity", "0")
+    free(LineSegment, this)
+  }
+}
 export function renderLineSegment(
   svg: SVGSVGElement,
   line: readonly [number, number, number, number],
   color: string,
   opacity: number,
   strokeWidth: number
-): SVGLineElement {
-  const el = document.createElementNS(SVGNS, "line")
-  const [x1, y1, x2, y2] = line
-
-  el.setAttributeNS(null, "x1", x1.toString())
-  el.setAttributeNS(null, "x2", x2.toString())
-  el.setAttributeNS(null, "y1", y1.toString())
-  el.setAttributeNS(null, "y2", y2.toString())
-
-  el.setAttributeNS(null, "stroke", color)
-  el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  el.setAttributeNS(null, "stroke-dasharray", "4 6")
-  svg.appendChild(el)
-
-  return el
+): LineSegment {
+  return acquire(LineSegment, svg, line, color, opacity, strokeWidth)
 }
 
+class Rectangle implements Poolable<[SVGSVGElement, BoundariesInterface, string, number, boolean]> {
+  el: SVGRectElement
+  svg: SVGSVGElement
+  color: string
+  opacity: number
+  dashed: boolean
+
+  constructor(
+    svg: SVGSVGElement,
+    rectangle: BoundariesInterface,
+    color: string,
+    opacity: number,
+    dashed: boolean = false
+  ) {
+    this.svg = svg
+    this.el = document.createElementNS(SVGNS, "rect")
+
+    // static properties
+    this.el.setAttributeNS(null, "fill-opacity", "0")
+    this.el.setAttributeNS(null, "stroke-width", "2")
+
+    // cached properties
+    this.color = color
+    this.opacity = opacity
+    this.dashed = dashed
+    this.el.setAttributeNS(null, "stroke", color)
+    this.el.setAttributeNS(null, "opacity", opacity.toString())
+    if (dashed) this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
+
+    this.set(svg, rectangle, color, opacity, dashed)
+    this.svg.appendChild(this.el)
+  }
+  set(
+    svg: SVGSVGElement,
+    rectangle: BoundariesInterface,
+    color: string,
+    opacity: number,
+    dashed: boolean = false
+  ) {
+    this.el.removeAttributeNS(null, "display")
+    this.el.setAttributeNS(null, "x", (rectangle.centerX - rectangle.size / 2).toString())
+    this.el.setAttributeNS(null, "y", (rectangle.centerY - rectangle.size / 2).toString())
+    this.el.setAttributeNS(null, "height", rectangle.size.toString())
+    this.el.setAttributeNS(null, "width", rectangle.size.toString())
+
+    if (color !== this.color) {
+      this.el.setAttributeNS(null, "stroke", color)
+      this.color = color
+    }
+    if (opacity !== this.opacity) {
+      this.el.setAttributeNS(null, "opacity", opacity.toString())
+      this.opacity = opacity
+    }
+    if (dashed !== this.dashed) {
+      if (dashed) this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
+      else this.el.removeAttributeNS(null, "stroke-dasharray")
+      this.dashed = dashed
+    }
+  }
+  free() {
+    this.el.setAttributeNS(null, "display", "none")
+    free(Rectangle, this)
+  }
+}
 export function renderRectangle(
   svg: SVGSVGElement,
   rectangle: BoundariesInterface,
   color: string,
   opacity: number,
   dashed: boolean = false
-): SVGRectElement {
-  const el = document.createElementNS(SVGNS, "rect")
-  el.setAttributeNS(null, "x", (rectangle.centerX - rectangle.size / 2).toString())
-  el.setAttributeNS(null, "y", (rectangle.centerY - rectangle.size / 2).toString())
-  el.setAttributeNS(null, "height", rectangle.size.toString())
-  el.setAttributeNS(null, "width", rectangle.size.toString())
-  el.setAttributeNS(null, "stroke", color)
-  el.setAttributeNS(null, "fill-opacity", "0")
-  el.setAttributeNS(null, "stroke-width", "2")
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  dashed && el.setAttributeNS(null, "stroke-dasharray", "4 6")
-  svg.appendChild(el)
-
-  return el
+): Rectangle {
+  return acquire(Rectangle, svg, rectangle, color, opacity, dashed)
 }
 
+class Circle implements Poolable<[SVGSVGElement, CentreOfMass, string, number, number]> {
+  el: SVGCircleElement
+  svg: SVGSVGElement
+  constructor(
+    svg: SVGSVGElement,
+    body: CentreOfMass,
+    color: string,
+    opacity: number = 1,
+    size: number = 0.7 * (body.mass - 1) + 4
+  ) {
+    this.svg = svg
+    this.el = document.createElementNS(SVGNS, "circle")
+    this.set(svg, body, color, opacity, size)
+    this.svg.appendChild(this.el)
+  }
+  set(
+    svg: SVGSVGElement,
+    body: CentreOfMass,
+    color: string,
+    opacity: number = 1,
+    size: number = 0.7 * (body.mass - 1) + 4
+  ) {
+    this.el.setAttributeNS(null, "cx", body.massX.toString())
+    this.el.setAttributeNS(null, "cy", body.massY.toString())
+    this.el.setAttributeNS(null, "r", size.toString())
+    this.el.setAttributeNS(null, "fill", color)
+    this.el.setAttributeNS(null, "opacity", opacity.toString())
+    this.el.setAttributeNS(null, "opacity", opacity.toString())
+    // this.svg.appendChild(this.el)
+  }
+  free() {
+    // this.svg.removeChild(this.el)
+    this.el.setAttributeNS(null, "opacity", "0")
+    free(Circle, this)
+  }
+}
 export function renderCircle(
   svg: SVGSVGElement,
   body: CentreOfMass,
   color: string,
   opacity: number = 1,
   size: number = 0.7 * (body.mass - 1) + 4
-): SVGCircleElement {
-  const el = document.createElementNS(SVGNS, "circle")
-  el.setAttributeNS(null, "cx", body.massX.toString())
-  el.setAttributeNS(null, "cy", body.massY.toString())
-  el.setAttributeNS(null, "r", size.toString())
-  el.setAttributeNS(null, "fill", color)
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  svg.appendChild(el)
-  return el
+): Circle {
+  return acquire(Circle, svg, body, color, opacity, size)
 }
 
 function foundAddedQuad(
@@ -177,7 +320,7 @@ export function newLines(
 export function highlightLastBody(
   svg: SVGSVGElement,
   bodies: Body[],
-  clearables: SVGElement[]
+  clearableLines: Poolable<any>[]
 ): void {
   const body = bodies.at(-1)
   if (body === undefined) return
@@ -192,16 +335,88 @@ export function highlightLastBody(
 
   const [horizontalLines, verticalLines] = getAllLines(quad)
   horizontalLines.forEach((intervals, y) => {
-    intervals.forEach(line => clearables.push(renderLine(svg, line, true, y, "grey", 0.5)))
+    intervals.forEach(line => clearableLines.push(renderLine(svg, line, true, y, "grey", 0.5)))
   })
   verticalLines.forEach((intervals, x) => {
-    intervals.forEach(line => clearables.push(renderLine(svg, line, false, x, "grey", 0.5)))
+    intervals.forEach(line => clearableLines.push(renderLine(svg, line, false, x, "grey", 0.5)))
   })
 
   const leaf = getQuadForBody(body, quad) as Leaf
-  clearables.push(renderRectangle(svg, leaf, "red", 1))
-  clearables.push(
+  clearableLines.push(renderRectangle(svg, leaf, "red", 1))
+  clearableLines.push(
     renderCircle(svg, { ...body, mass: (body.mass > 2 ? 8 : body.mass) * 4 }, "red", 1)
   )
   quad.free()
+}
+
+export function animateStandardNBody(svg: SVGSVGElement, nodes: SvgNode[]): SvgNode[] {
+  return nodes.map(node => {
+    const newNode = standardNBody(node, nodes)
+
+    node.el.setAttributeNS(null, "cx", node.massX.toString())
+    node.el.setAttributeNS(null, "cy", node.massY.toString())
+
+    return Object.assign(node, newNode)
+  })
+}
+
+export function animatePoints(svg: SVGSVGElement, nodes: SvgNode[], quad: Quad): SvgNode[] {
+  // remove svg elements if node is to be removed
+  const pred = eliminateOutliers(quad)
+  nodes.forEach(node => !pred(node) && svg.removeChild(node.el))
+
+  // filter nodes then animate them
+  return nodes.filter(pred).map(node => {
+    const newNode = update(node, quad)
+
+    node.el.setAttributeNS(null, "cx", newNode.massX.toString())
+    node.el.setAttributeNS(null, "cy", newNode.massY.toString())
+
+    return Object.assign(node, newNode)
+  })
+}
+
+export function animateQuadTree(
+  svg: SVGSVGElement,
+  pooledObjs: Poolable<any>[],
+  quad: Quad,
+  node: CentreOfMass,
+  theta: number
+): void {
+  /**
+   * The z-index of svg elements relies on the order in which they are added
+   * so to make sure the quads which are being calculated are rendered on top
+   * the tree needs to be traversed once to render the quads which will not be calculated
+   * and then again for the quads which will be traversed
+   *  */
+  const depthLimit = 100
+
+  // first traverse
+  const [horizontalLines, verticalLines] = getLines(quad, node, theta, depthLimit)
+  horizontalLines.forEach((intervals, y) => {
+    intervals.forEach(line => pooledObjs.push(renderLine(svg, line, true, y, "grey", 0.3)))
+  })
+  verticalLines.forEach((intervals, x) => {
+    intervals.forEach(line => pooledObjs.push(renderLine(svg, line, false, x, "grey", 0.3)))
+  })
+
+  const secondTrav = (traversingQuad: Quad, depth: number = 0): void => {
+    if (depth >= depthLimit) return
+
+    if (traversingQuad instanceof Leaf && traversingQuad.bodies.includes(node)) return
+
+    if (willCalc(traversingQuad, node, theta)) {
+      if (!(traversingQuad instanceof Leaf))
+        pooledObjs.push(renderRectangle(svg, traversingQuad, "red", 1))
+
+      pooledObjs.push(renderCircle(svg, traversingQuad, "red", 1))
+      pooledObjs.push(renderLineBetweenBodies(svg, traversingQuad, node, "red", 0.5))
+    } else if (traversingQuad instanceof Fork) {
+      secondTrav(traversingQuad.nw, depth + 1)
+      secondTrav(traversingQuad.ne, depth + 1)
+      secondTrav(traversingQuad.sw, depth + 1)
+      secondTrav(traversingQuad.se, depth + 1)
+    }
+  }
+  secondTrav(quad)
 }

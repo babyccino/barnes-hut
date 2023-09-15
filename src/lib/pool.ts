@@ -1,6 +1,3 @@
-import { LineSegment } from "./render"
-import { Empty, Fork, Leaf } from "./simulation"
-
 type ClassConstructor<K = any, T extends any[] = any[]> = {
   new (...args: T): K
 }

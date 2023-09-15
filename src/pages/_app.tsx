@@ -1,3 +1,6 @@
+/// <reference lib="dom" />
+/// <reference lib="dom.iterable" />
+
 import "../styles/globals.scss"
 import type { AppProps } from "next/app"
 import Head from "next/head"

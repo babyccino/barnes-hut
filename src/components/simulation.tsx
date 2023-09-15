@@ -25,6 +25,8 @@ import {
 } from "../lib/simulation"
 import { rand } from "../lib/util"
 
+let TIME = 0
+
 export default function Simulation({
   nodeCount,
   running,
@@ -43,6 +45,7 @@ export default function Simulation({
   const nodesRef = useRef<SvgNode[]>([])
   const clearablesRef = useRef<SVGElement[]>([])
   const frame = useRef<number>(-1)
+  const fpsRef = useRef<HTMLParagraphElement>(null)
 
   const clearAndRenderQuad = useCallback(() => {
     if (!svgRef.current) return
@@ -86,7 +89,10 @@ export default function Simulation({
     window.cancelAnimationFrame(frame.current)
 
     if (running && svgRef.current) {
-      const renderLoop = () => {
+      const renderLoop = (time: number) => {
+        if (true && fpsRef.current)
+          fpsRef.current.innerText = (1000 / (time - TIME)).toPrecision(3).toString()
+        TIME = time
         if (!svgRef.current) return
         const svg = svgRef.current
         const nodes = nodesRef.current
@@ -146,6 +152,18 @@ export default function Simulation({
     )
   }, [nodeCount])
 
+  if (true)
+    return (
+      <>
+        <svg {...props} ref={svgRef} viewBox={`0 0 ${X_MAX} ${Y_MAX}`} />
+        <p
+          ref={fpsRef}
+          style={{ zIndex: 100, position: "fixed", right: 10, top: 10, fontSize: "4rem" }}
+        >
+          FPS
+        </p>
+      </>
+    )
   return <svg {...props} ref={svgRef} viewBox={`0 0 ${X_MAX} ${Y_MAX}`} />
 }
 

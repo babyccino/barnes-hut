@@ -1,11 +1,10 @@
 import { GALAXY } from "./galaxy"
-import { Body, BoundariesInterface, CentreOfMass, QuadBase } from "./interface"
-import { getAllLines, Line } from "./lines"
+import { Body, BoundariesInterface, CentreOfMass } from "./interface"
+import { Line, getAllLines } from "./lines"
 import {
-  Empty,
+  Fork,
   Leaf,
   Quad,
-  Fork,
   createQuadAndInsertBodies,
   getBoundaries,
   getQuadForBody,
@@ -204,4 +203,5 @@ export function highlightLastBody(
   clearables.push(
     renderCircle(svg, { ...body, mass: (body.mass > 2 ? 8 : body.mass) * 4 }, "red", 1)
   )
+  quad.free()
 }

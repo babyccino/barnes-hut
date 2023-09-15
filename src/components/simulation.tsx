@@ -1,23 +1,24 @@
-import { useEffect, useRef, useCallback, SVGProps } from "react"
+import { SVGProps, useCallback, useEffect, useRef } from "react"
+
 import { GALAXY } from "../lib/galaxy"
-import { Body, CentreOfMass } from "../lib/interface"
-import { getAllLines, getLines } from "../lib/lines"
+import { CentreOfMass } from "../lib/interface"
+import { getLines } from "../lib/lines"
+import { resetLog } from "../lib/pool"
 import {
+  SvgNode,
   createNode,
   renderCircle,
   renderLine,
   renderLineBetweenBodies,
   renderRectangle,
-  SvgNode,
 } from "../lib/render"
 import {
-  createQuadAndInsertBodies,
-  eliminateOutliers,
   Fork,
-  getBoundaries,
-  getQuadForBody,
   Leaf,
   Quad,
+  createQuadAndInsertBodies,
+  eliminateOutliers,
+  getBoundaries,
   standardNBody,
   update,
   willCalc,
@@ -62,6 +63,7 @@ export default function Simulation({
     clearImpermanentElements(svg, clearables)
     animateQuadTree(svg, clearables, quad, focusNode, theta)
     clearables.push(renderCircle(svg, focusNode, focusNode.color, 1, 5))
+    quad.free()
   }, [theta])
 
   // rerender quadtree
@@ -92,6 +94,7 @@ export default function Simulation({
         const clearables = clearablesRef.current
 
         const boundaries = getBoundaries(nodes)
+        resetLog()
         const quad = createQuadAndInsertBodies(
           boundaries.centerX,
           boundaries.centerY,
@@ -112,6 +115,8 @@ export default function Simulation({
           clearables.push(renderCircle(svg, focusNode, focusNode.color, 1, 5))
         }
 
+        quad.free()
+        // logPools()
         frame.current = window.requestAnimationFrame(renderLoop)
       }
       frame.current = window.requestAnimationFrame(renderLoop)

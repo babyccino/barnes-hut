@@ -4,7 +4,7 @@ import styles from "./quadtreeAnimation.module.scss"
 import { GALAXY } from "../../lib/galaxy"
 import { Boundaries, BoundariesInterface, CentreOfMass } from "../../lib/interface"
 import { newLines } from "../../lib/render"
-import { createQuadAndInsertBodies, Empty, Quad } from "../../lib/simulation"
+import { Empty, Quad, createQuadAndInsertBodies } from "../../lib/simulation"
 
 const X_MAX = 2500
 const Y_MAX = 2500
@@ -54,6 +54,7 @@ export default function QuadtreeAnimation({
       setBodies(prev => [...prev, body])
       setQuads(prev => [...prev, ...addedQuads])
 
+      lastQuadRef.current.free()
       lastQuadRef.current = newQuad
       const totalLoopTime =
         bodyAnimationDuration +

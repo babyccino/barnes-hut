@@ -1,3 +1,4 @@
+import { LineSegment } from "./render"
 import { Empty, Fork, Leaf } from "./simulation"
 
 type ClassConstructor<K = any, T extends any[] = any[]> = {
@@ -7,7 +8,14 @@ export abstract class Poolable<T extends any[]> {
   abstract set(...args: T): void
   abstract free(): void
 }
-type Pool<T = any> = { length: number; objs: T[] }
+type Pool<T = any> = {
+  length: number
+  objs: T[]
+  attempts: number
+  hits: number
+  frees: number
+  misses: number
+}
 const pools = new Map<string, Pool>()
 export const clearPools = () => pools.clear()
 
@@ -15,10 +23,10 @@ export function getPool<
   Instance,
   Args extends any[],
   Ctor extends ClassConstructor<Instance, Args>
->(classContructor: Ctor): { length: number; objs: Instance[] } {
+>(classContructor: Ctor): Pool<Instance> {
   const pool = pools.get(classContructor.name)
   if (pool) return pool
-  const newPool: Pool<Instance> = { length: 0, objs: [] }
+  const newPool: Pool<Instance> = { length: 0, objs: [], attempts: 0, hits: 0, frees: 0, misses: 0 }
   pools.set(classContructor.name, newPool)
   return newPool
 }
@@ -28,38 +36,38 @@ export function getPoolLength<T extends ClassConstructor>(classContructor: T): n
   if (pool === undefined) return null
   return pool.length
 }
-let emptyMisses = 0
-let emptyHits = 0
-let emptyFrees = 0
-let emptyRequests = 0
-export const resetLog = () => (emptyHits = emptyMisses = emptyFrees = emptyRequests = 0)
+
+export const resetLog = () =>
+  pools.forEach(pool => (pool.attempts = pool.frees = pool.hits = pool.misses = 0))
 export function logPools() {
-  console.log({
-    empty: getPoolLength(Empty),
-    leaf: getPoolLength(Leaf),
-    fork: getPoolLength(Fork),
-    emptyMisses,
-    emptyHits,
-    emptyFrees,
-    emptyRequests,
+  let str = ""
+  pools.forEach((pool, key) => {
+    str += `{
+      name: ${key},
+      attempts: ${pool.attempts},
+      hits: ${pool.hits},
+      frees: ${pool.frees},
+      misses: ${pool.misses},
+    }\n`
   })
+  console.log(str)
 }
 
 export function acquire<
-  Args extends any[],
   Instance extends Poolable<Args>,
+  Args extends any[],
   Ctor extends ClassConstructor<Instance, Args>
 >(ctor: Ctor, ...args: Args): Instance {
   const pool = getPool<Instance, Args, Ctor>(ctor)
-  if (ctor.name === "Leaf") ++emptyRequests
+  ++pool.attempts
   const popped = pool.objs.pop()
   if (popped) {
-    if (ctor.name === "Leaf") ++emptyHits
+    ++pool.hits
     pool.length -= 1
     popped.set(...args)
     return popped
   }
-  if (ctor.name === "Leaf") ++emptyMisses
+  ++pool.misses
   return new ctor(...args)
 }
 
@@ -74,5 +82,5 @@ export function free<Instance>(
     )
   pool.objs.push(member)
   pool.length += 1
-  if (classContructor.name === "Leaf") ++emptyFrees
+  ++pool.frees
 }

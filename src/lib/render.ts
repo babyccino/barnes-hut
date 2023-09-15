@@ -97,7 +97,6 @@ export class LineSegment
   implements Poolable<[SVGSVGElement, string, number, number, number, number, number, number]>
 {
   el: SVGLineElement
-  svg: SVGSVGElement
   color: string
   opacity: number
   strokeWidth: number
@@ -113,7 +112,6 @@ export class LineSegment
     y2: number
   ) {
     this.el = document.createElementNS(SVGNS, "line")
-    this.svg = svg
     this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
     this.color = color
     this.opacity = opacity
@@ -122,7 +120,7 @@ export class LineSegment
     this.el.setAttributeNS(null, "opacity", opacity.toString())
     this.el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
     this.set(svg, color, opacity, strokeWidth, x1, y1, x2, y2)
-    this.svg.appendChild(this.el)
+    svg.appendChild(this.el)
   }
 
   set(
@@ -174,7 +172,6 @@ export function renderLineSegment(
 
 class Rectangle implements Poolable<[SVGSVGElement, BoundariesInterface, string, number, boolean]> {
   el: SVGRectElement
-  svg: SVGSVGElement
   color: string
   opacity: number
   dashed: boolean
@@ -186,7 +183,6 @@ class Rectangle implements Poolable<[SVGSVGElement, BoundariesInterface, string,
     opacity: number,
     dashed: boolean = false
   ) {
-    this.svg = svg
     this.el = document.createElementNS(SVGNS, "rect")
 
     // static properties
@@ -202,7 +198,7 @@ class Rectangle implements Poolable<[SVGSVGElement, BoundariesInterface, string,
     if (dashed) this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
 
     this.set(svg, rectangle, color, opacity, dashed)
-    this.svg.appendChild(this.el)
+    svg.appendChild(this.el)
   }
   set(
     svg: SVGSVGElement,
@@ -248,7 +244,7 @@ export function renderRectangle(
 
 class Circle implements Poolable<[SVGSVGElement, CentreOfMass, string, number, number]> {
   el: SVGCircleElement
-  svg: SVGSVGElement
+
   constructor(
     svg: SVGSVGElement,
     body: CentreOfMass,
@@ -256,10 +252,9 @@ class Circle implements Poolable<[SVGSVGElement, CentreOfMass, string, number, n
     opacity: number = 1,
     size: number = 0.7 * (body.mass - 1) + 4
   ) {
-    this.svg = svg
     this.el = document.createElementNS(SVGNS, "circle")
     this.set(svg, body, color, opacity, size)
-    this.svg.appendChild(this.el)
+    svg.appendChild(this.el)
   }
   set(
     svg: SVGSVGElement,
@@ -274,10 +269,8 @@ class Circle implements Poolable<[SVGSVGElement, CentreOfMass, string, number, n
     this.el.setAttributeNS(null, "fill", color)
     this.el.setAttributeNS(null, "opacity", opacity.toString())
     this.el.setAttributeNS(null, "opacity", opacity.toString())
-    // this.svg.appendChild(this.el)
   }
   free() {
-    // this.svg.removeChild(this.el)
     this.el.setAttributeNS(null, "opacity", "0")
     free(Circle, this)
   }

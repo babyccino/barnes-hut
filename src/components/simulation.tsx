@@ -1,23 +1,22 @@
-import { useEffect, useRef, useCallback, SVGProps } from "react"
+import { SVGProps, useCallback, useEffect, useRef } from "react"
 import { GALAXY } from "../lib/galaxy"
-import { Body, CentreOfMass } from "../lib/interface"
-import { getAllLines, getLines } from "../lib/lines"
+import { CentreOfMass } from "../lib/interface"
+import { IntervalMap, addLinesFromQuad, mergeIntervals } from "../lib/lines"
 import {
+  SvgNode,
   createNode,
   renderCircle,
   renderLine,
   renderLineBetweenBodies,
   renderRectangle,
-  SvgNode,
 } from "../lib/render"
 import {
-  createQuadAndInsertBodies,
-  eliminateOutliers,
   Fork,
-  getBoundaries,
-  getQuadForBody,
   Leaf,
   Quad,
+  createQuadAndInsertBodies,
+  eliminateOutliers,
+  getBoundaries,
   standardNBody,
   update,
   willCalc,
@@ -257,32 +256,54 @@ function animateQuadTree(
    *  */
   const depthLimit = 100
 
-  // first traverse
-  const [horizontalLines, verticalLines] = getLines(quad, node, theta, depthLimit)
-  horizontalLines.forEach((intervals, y) => {
-    intervals.forEach(line => clearables.push(renderLine(svg, line, true, y, "grey", 0.3)))
-  })
-  verticalLines.forEach((intervals, x) => {
-    intervals.forEach(line => clearables.push(renderLine(svg, line, false, x, "grey", 0.3)))
-  })
+  const verticalLines = new IntervalMap()
+  const horizontalLines = new IntervalMap()
 
-  const secondTrav = (traversingQuad: Quad, depth: number = 0): void => {
+  const leavesToRender: Leaf[] = []
+  const forksToRender: Quad[] = []
+
+  const traverse = (traversingQuad: Quad, depth: number = 0, passedCalc = false): void => {
     if (depth >= depthLimit) return
 
-    if (traversingQuad instanceof Leaf && traversingQuad.bodies.includes(node)) return
+    const _willCalc = willCalc(traversingQuad, node, theta)
+    const isLeaf = traversingQuad instanceof Leaf
 
-    if (willCalc(traversingQuad, node, theta)) {
-      if (!(traversingQuad instanceof Leaf))
-        clearables.push(renderRectangle(svg, traversingQuad, "red", 1))
+    if (isLeaf || passedCalc || !_willCalc) {
+      addLinesFromQuad(traversingQuad, horizontalLines, verticalLines)
+    }
+    if (isLeaf && traversingQuad.bodies.includes(node)) return
 
-      clearables.push(renderCircle(svg, traversingQuad, "red", 1))
-      clearables.push(renderLineBetweenBodies(svg, traversingQuad, node, "red", 0.5))
-    } else if (traversingQuad instanceof Fork) {
-      secondTrav(traversingQuad.nw, depth + 1)
-      secondTrav(traversingQuad.ne, depth + 1)
-      secondTrav(traversingQuad.sw, depth + 1)
-      secondTrav(traversingQuad.se, depth + 1)
+    if (!passedCalc && _willCalc) {
+      if (isLeaf) leavesToRender.push(traversingQuad)
+      else forksToRender.push(traversingQuad)
+    }
+
+    if (traversingQuad instanceof Fork) {
+      traverse(traversingQuad.nw, depth + 1, _willCalc)
+      traverse(traversingQuad.ne, depth + 1, _willCalc)
+      traverse(traversingQuad.sw, depth + 1, _willCalc)
+      traverse(traversingQuad.se, depth + 1, _willCalc)
     }
   }
-  secondTrav(quad)
+  traverse(quad)
+
+  horizontalLines.forEach((intervals, y) =>
+    mergeIntervals(intervals).forEach(line =>
+      clearables.push(renderLine(svg, line, true, y, "grey", 0.3))
+    )
+  )
+  verticalLines.forEach((intervals, x) =>
+    mergeIntervals(intervals).forEach(line =>
+      clearables.push(renderLine(svg, line, false, x, "grey", 0.3))
+    )
+  )
+  for (const leaf of leavesToRender) {
+    clearables.push(renderCircle(svg, leaf, "red", 1))
+    clearables.push(renderLineBetweenBodies(svg, leaf, node, "red", 0.5))
+  }
+  for (const fork of forksToRender) {
+    clearables.push(renderRectangle(svg, fork, "red", 1))
+    clearables.push(renderCircle(svg, fork, "red", 1))
+    clearables.push(renderLineBetweenBodies(svg, fork, node, "red", 0.5))
+  }
 }

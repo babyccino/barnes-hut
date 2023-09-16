@@ -1,6 +1,6 @@
 import { GALAXY } from "./galaxy"
 import { Body, BoundariesInterface, CentreOfMass } from "./interface"
-import { Line, getAllLines, getLines } from "./lines"
+import { IntervalMap, Line, addLinesFromQuad, getAllLines, mergeIntervals } from "./lines"
 import { Poolable, acquire, free } from "./pool"
 import {
   Fork,
@@ -348,7 +348,7 @@ export function animatePoints(svg: SVGSVGElement, nodes: SvgNode[], quad: Quad):
 
 export function animateQuadTree(
   svg: SVGSVGElement,
-  pooledObjs: Poolable<any>[],
+  _pooledObjs: Poolable<any>[],
   quad: Quad,
   node: CentreOfMass,
   theta: number
@@ -361,32 +361,54 @@ export function animateQuadTree(
    *  */
   const depthLimit = 100
 
-  // first traverse
-  const [horizontalLines, verticalLines] = getLines(quad, node, theta, depthLimit)
-  horizontalLines.forEach((intervals, y) => {
-    intervals.forEach(line => pooledObjs.push(renderLine(svg, line, true, y, "grey", 0.3)))
-  })
-  verticalLines.forEach((intervals, x) => {
-    intervals.forEach(line => pooledObjs.push(renderLine(svg, line, false, x, "grey", 0.3)))
-  })
+  const verticalLines = new IntervalMap()
+  const horizontalLines = new IntervalMap()
 
-  const secondTrav = (traversingQuad: Quad, depth: number = 0): void => {
+  const leavesToRender: Leaf[] = []
+  const forksToRender: Quad[] = []
+
+  const traverse = (traversingQuad: Quad, depth: number = 0, passedCalc = false): void => {
     if (depth >= depthLimit) return
 
-    if (traversingQuad instanceof Leaf && traversingQuad.bodies.includes(node)) return
+    const _willCalc = willCalc(traversingQuad, node, theta)
+    const isLeaf = traversingQuad instanceof Leaf
 
-    if (willCalc(traversingQuad, node, theta)) {
-      if (!(traversingQuad instanceof Leaf))
-        pooledObjs.push(renderRectangle(svg, traversingQuad, "red", 1))
+    if (isLeaf || passedCalc || !_willCalc) {
+      addLinesFromQuad(traversingQuad, horizontalLines, verticalLines)
+    }
+    if (isLeaf && traversingQuad.bodies.includes(node)) return
 
-      pooledObjs.push(renderCircle(svg, traversingQuad, "red", 1))
-      pooledObjs.push(renderLineBetweenBodies(svg, traversingQuad, node, "red", 0.5))
-    } else if (traversingQuad instanceof Fork) {
-      secondTrav(traversingQuad.nw, depth + 1)
-      secondTrav(traversingQuad.ne, depth + 1)
-      secondTrav(traversingQuad.sw, depth + 1)
-      secondTrav(traversingQuad.se, depth + 1)
+    if (!passedCalc && _willCalc) {
+      if (isLeaf) leavesToRender.push(traversingQuad)
+      else forksToRender.push(traversingQuad)
+    }
+
+    if (traversingQuad instanceof Fork) {
+      traverse(traversingQuad.nw, depth + 1, _willCalc)
+      traverse(traversingQuad.ne, depth + 1, _willCalc)
+      traverse(traversingQuad.sw, depth + 1, _willCalc)
+      traverse(traversingQuad.se, depth + 1, _willCalc)
     }
   }
-  secondTrav(quad)
+  traverse(quad)
+
+  horizontalLines.forEach((intervals, y) =>
+    mergeIntervals(intervals).forEach(line =>
+      _pooledObjs.push(renderLine(svg, line, true, y, "grey", 0.3))
+    )
+  )
+  verticalLines.forEach((intervals, x) =>
+    mergeIntervals(intervals).forEach(line =>
+      _pooledObjs.push(renderLine(svg, line, false, x, "grey", 0.3))
+    )
+  )
+  for (const leaf of leavesToRender) {
+    _pooledObjs.push(renderCircle(svg, leaf, "red", 1))
+    _pooledObjs.push(renderLineBetweenBodies(svg, leaf, node, "red", 0.5))
+  }
+  for (const fork of forksToRender) {
+    _pooledObjs.push(renderRectangle(svg, fork, "red", 1))
+    _pooledObjs.push(renderCircle(svg, fork, "red", 1))
+    _pooledObjs.push(renderLineBetweenBodies(svg, fork, node, "red", 0.5))
+  }
 }

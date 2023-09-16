@@ -279,40 +279,24 @@ export function update(body: Body, quad: Quad): Body {
 }
 
 const ELIMINATION_THRESHOLD = 0.5
-export function eliminateOutliers(quad: QuadBase): (body: Body) => boolean {
-  // returns true for nodes which should not be eliminated
-  return (body: Body): boolean => {
-    const dx = quad.massX - body.massX
-    const dy = quad.massY - body.massY
-    const d = Math.sqrt(dx * dx + dy * dy)
-    // object is far away from the center of the mass
-    if (d > ELIMINATION_THRESHOLD * quad.size) {
-      const nx = dx / d
-      const ny = dy / d
-      const relativeSpeed = body.xSpeed * nx + body.ySpeed * ny
-      // object is moving away from the center of the mass
-      if (relativeSpeed < 0) {
-        const escapeSpeed = Math.sqrt((2 * GEE * quad.mass) / d)
-        // object has the espace velocity
-        return !(-relativeSpeed > 2 * escapeSpeed)
-      } else return true
+export const eliminateOutliers = (quad: QuadBase) => (body: Body) => {
+  const dx = quad.massX - body.massX
+  const dy = quad.massY - body.massY
+  const d = Math.sqrt(dx * dx + dy * dy)
+  // object is far away from the center of the mass
+  if (d > ELIMINATION_THRESHOLD * quad.size) {
+    const nx = dx / d
+    const ny = dy / d
+    const relativeSpeed = body.xSpeed * nx + body.ySpeed * ny
+    // object is moving away from the center of the mass
+    if (relativeSpeed < 0) {
+      const escapeSpeed = Math.sqrt((2 * GEE * quad.mass) / d)
+      // object has the espace velocity
+      return !(-relativeSpeed > 2 * escapeSpeed)
     } else return true
-    // const d = distance(body, quad)
-    // if (d <= ELIMINATION_THRESHOLD * quad.size) return true
-
-    // const unit = unitVector(quad, body)
-    // const relativeSpeed = body.xSpeed * unit[0] + body.ySpeed * unit[1]
-    // if (relativeSpeed >= 0) return true
-
-    // const escapeSpeed = Math.sqrt((2 * GEE * quad.mass) / d)
-    // return !(-relativeSpeed > 2 * escapeSpeed)
-  }
+  } else return true
 }
 
 export const willCalc = (quad: Quad, body: CentreOfMass, theta: number = THETA): boolean =>
   (theta === 0 && quad instanceof Leaf) ||
   (!(quad instanceof Empty) && (quad instanceof Leaf || quad.size / distance(quad, body) < theta))
-
-// export const willCalc = (quad: Quad, body: CentreOfMass): boolean =>
-//   quad instanceof Leaf ||
-//   (quad instanceof Fork && quad.size / distance(quad, body) < THETA)

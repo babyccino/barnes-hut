@@ -1,4 +1,4 @@
-import { test, describe, expect } from "bun:test"
+import { test, describe, expect, beforeAll } from "bun:test"
 
 import { Body, CentreOfMass, QuadBase } from "../../src/lib/interface"
 import {
@@ -17,12 +17,20 @@ import {
   createQuadAndInsertBodies,
   getQuadForBody,
 } from "../../src/lib/simulation"
+import { getPool } from "src/lib/pool"
 
 function expectEqual<T>(provided: T, expected: T): void {
   expect(provided).toEqual(expected)
 }
 
 describe("Simulation function", () => {
+  beforeAll(() => {
+    // instantiate pools so free() does not throw
+    getPool(Empty)
+    getPool(Leaf)
+    getPool(Fork)
+  })
+
   test("Mass centre function should work correctly", () => {
     const b1: CentreOfMass = { mass: 1, massX: 5, massY: 10 }
     const b2: CentreOfMass = { mass: 1, massX: 15, massY: 15 }

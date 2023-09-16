@@ -157,16 +157,21 @@ export function addForce(body: CentreOfMass, otherBody: CentreOfMass): [number, 
   } else return [0, 0]
 }
 
-export function addForceToBody(body: Body, netXForce: number, netYForce: number): Body {
-  const massX = body.massX + body.xSpeed * DELTA
-  const massY = body.massY + body.ySpeed * DELTA
-  const xSpeed = body.xSpeed + (netXForce / body.mass) * DELTA
-  const ySpeed = body.ySpeed + (netYForce / body.mass) * DELTA
+export function addForceToBody(
+  body: Body,
+  netXForce: number,
+  netYForce: number,
+  multiplier: number = 1
+): Body {
+  const massX = body.massX + body.xSpeed * DELTA * multiplier
+  const massY = body.massY + body.ySpeed * DELTA * multiplier
+  const xSpeed = body.xSpeed + (netXForce / body.mass) * DELTA * multiplier
+  const ySpeed = body.ySpeed + (netYForce / body.mass) * DELTA * multiplier
 
   return { massX, massY, mass: body.mass, xSpeed, ySpeed }
 }
 
-export function standardNBody(body: Body, bodies: CentreOfMass[]): Body {
+export function standardNBody(body: Body, bodies: CentreOfMass[], multiplier: number): Body {
   let netXForce = 0
   let netYForce = 0
   for (const otherBody of bodies) {
@@ -176,7 +181,7 @@ export function standardNBody(body: Body, bodies: CentreOfMass[]): Body {
     netYForce += dForce[1]
   }
 
-  return addForceToBody(body, netXForce, netYForce)
+  return addForceToBody(body, netXForce, netYForce, multiplier)
 }
 
 function getBodies(...bodies: any[]): CentreOfMass[] {
@@ -246,7 +251,7 @@ export function getQuadForBody(body: CentreOfMass, quad: Quad): Leaf | null {
   else return null
 }
 
-export function update(body: Body, quad: Quad): Body {
+export function update(body: Body, quad: Quad, multiplier: number = 1): Body {
   let netXForce = 0
   let netYForce = 0
   function traverse(quad: Quad, depth: number): void {
@@ -275,27 +280,28 @@ export function update(body: Body, quad: Quad): Body {
   }
   traverse(quad, 0)
 
-  return addForceToBody(body, netXForce, netYForce)
+  return addForceToBody(body, netXForce, netYForce, multiplier)
 }
 
-const ELIMINATION_THRESHOLD = 0.8
-export const eliminateOutliers = (quad: QuadBase) => (body: Body) => {
-  const dx = quad.massX - body.massX
-  const dy = quad.massY - body.massY
-  const d = Math.sqrt(dx * dx + dy * dy)
-  // object is far away from the center of the mass
-  if (d > ELIMINATION_THRESHOLD * quad.size) {
-    const nx = dx / d
-    const ny = dy / d
-    const relativeSpeed = body.xSpeed * nx + body.ySpeed * ny
-    // object is moving away from the center of the mass
-    if (relativeSpeed < 0) {
-      const escapeSpeed = Math.sqrt((2 * GEE * quad.mass) / d)
-      // object has the espace velocity
-      return !(-relativeSpeed > 2 * escapeSpeed)
+export const eliminateOutliers =
+  (quad: QuadBase, threshold: number = 0.5) =>
+  (body: Body) => {
+    const dx = quad.massX - body.massX
+    const dy = quad.massY - body.massY
+    const d = Math.sqrt(dx * dx + dy * dy)
+    // object is far away from the center of the mass
+    if (d > threshold * quad.size) {
+      const nx = dx / d
+      const ny = dy / d
+      const relativeSpeed = body.xSpeed * nx + body.ySpeed * ny
+      // object is moving away from the center of the mass
+      if (relativeSpeed < 0) {
+        const escapeSpeed = Math.sqrt((2 * GEE * quad.mass) / d)
+        // object has the espace velocity
+        return !(-relativeSpeed > 2 * escapeSpeed)
+      } else return true
     } else return true
-  } else return true
-}
+  }
 
 export const willCalc = (quad: Quad, body: CentreOfMass, theta: number = THETA): boolean =>
   (theta === 0 && quad instanceof Leaf) ||

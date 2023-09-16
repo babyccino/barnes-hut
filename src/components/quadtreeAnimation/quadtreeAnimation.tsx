@@ -1,7 +1,7 @@
 import { SVGProps, useEffect, useRef, useState } from "react"
 import styles from "./quadtreeAnimation.module.scss"
 
-import { GALAXY } from "../../lib/galaxy"
+import { quadtreeAnimationGalaxy } from "../../lib/galaxy"
 import { Boundaries, BoundariesInterface, CentreOfMass } from "../../lib/interface"
 import { newLines } from "../../lib/render"
 import { Empty, Quad, createQuadAndInsertBodies } from "../../lib/simulation"
@@ -32,10 +32,10 @@ export default function QuadtreeAnimation({
   useEffect(() => {
     // render first box
     const renderLoop = (i: number) => {
-      if (i === GALAXY.length) return
+      if (i === quadtreeAnimationGalaxy.length) return
 
-      const bodies = GALAXY.slice(0, i + 1)
-      const body = GALAXY[i]
+      const bodies = quadtreeAnimationGalaxy.slice(0, i + 1)
+      const body = quadtreeAnimationGalaxy[i]
 
       const newQuad = createQuadAndInsertBodies(
         boundaries.centerX,

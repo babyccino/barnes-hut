@@ -1,7 +1,7 @@
 import { HTMLProps, useEffect, useRef } from "react"
 
 import { grey } from "src/lib/util"
-import { GALAXY } from "../lib/galaxy"
+import { simGalaxy } from "../lib/galaxy"
 import { BodyGraphic, animateQuadTree, renderCircle } from "../lib/render"
 import {
   Quad,
@@ -25,12 +25,14 @@ export default function Simulation({
   running,
   renderCalculatedQuads,
   theta,
+  playSpeed,
   ...props
 }: {
   nodeCount: number
   running: boolean
   renderCalculatedQuads: boolean
   theta: number
+  playSpeed: number
 } & HTMLProps<HTMLCanvasElement>): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const bodiesRef = useRef<BodyGraphic[]>([])
@@ -98,7 +100,7 @@ export default function Simulation({
       const focusNode = bodies[0]
 
       canvas.clearRect(0, 0, X_MAX, Y_MAX)
-      bodiesRef.current = updateBodies(bodies, quad)
+      bodiesRef.current = updateBodies(bodies, quad, playSpeed)
       drawBodies(canvas, bodiesRef.current)
 
       // Quadtree rendering
@@ -113,8 +115,9 @@ export default function Simulation({
       quad.free()
       frame.current = window.requestAnimationFrame(renderLoop)
     }
+    // console.log("updating render loop")
     frame.current = window.requestAnimationFrame(renderLoop)
-  }, [running, renderCalculatedQuads, theta])
+  }, [running, renderCalculatedQuads, theta, playSpeed])
 
   // useEffect(() => {
   //   if (canvasRef.current && !renderCalculatedQuads) clearImpermanentElements(pooledObjsRef.current)
@@ -135,7 +138,7 @@ export default function Simulation({
   useEffect(() => {
     const canvas = canvasRef.current?.getContext("2d")
     canvas?.clearRect(0, 0, X_MAX, Y_MAX)
-    const bodies = GALAXY.slice(0, nodeCount).map<BodyGraphic>(body => ({
+    const bodies = simGalaxy.slice(0, nodeCount).map<BodyGraphic>(body => ({
       ...body,
       color: body.mass > 2 ? "black" : "grey",
       size: body.mass > 2 ? 20 : body.mass * 4,
@@ -165,10 +168,11 @@ function drawBodies(canvas: CanvasRenderingContext2D, bodies: BodyGraphic[]) {
   }
 }
 
-function updateBodies(bodies: BodyGraphic[], quad: Quad): BodyGraphic[] {
+function updateBodies(bodies: BodyGraphic[], quad: Quad, playSpeed: number): BodyGraphic[] {
+  // console.log("update bodies: ", playSpeed)
   // filter bodies then animate them
-  return bodies.filter(eliminateOutliers(quad)).map(body => {
-    const newBody = update(body, quad)
+  return bodies.filter(eliminateOutliers(quad, 0.8)).map(body => {
+    const newBody = update(body, quad, playSpeed)
     return Object.assign(newBody, { size: body.size, color: body.color })
   })
 }

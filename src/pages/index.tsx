@@ -34,8 +34,12 @@ export default function Home(): JSX.Element {
   const [theta, setTheta] = useState(0.5)
   const [renderQuads, setRenderQuads] = useState(false)
   const [nodeCount, setNodeCount] = useState(MAX_GALAXY_SIZE)
+  const [playSpeed, setPlaySpeed] = useState(1)
   const [quadtreeState, setQuadtreeState] = useState(ComponentState.UnMounted)
 
+  const onPlaySpeedChange: ChangeEventHandler<HTMLInputElement> = e => {
+    setPlaySpeed(e.target.valueAsNumber)
+  }
   const onNodeCount: ChangeEventHandler<HTMLInputElement> = e => {
     setNodeCount(e.target.valueAsNumber)
     setSimRunning(false)
@@ -93,6 +97,7 @@ export default function Home(): JSX.Element {
           running={simRunning}
           renderCalculatedQuads={renderQuads}
           theta={theta}
+          playSpeed={playSpeed}
         />
       ) : null}
       {quadtreeState !== ComponentState.UnMounted ? (
@@ -132,6 +137,21 @@ export default function Home(): JSX.Element {
             disabled={quadtreeState !== ComponentState.UnMounted}
           />
           <div className="align-middle">{nodeCount}</div>
+        </div>
+        <div className="backdrop-blur-sm sm:backdrop-blur-none flex flex-row pt-2 gap-4 m-auto">
+          <label htmlFor="playSpeed">Play speed</label>
+          <input
+            className="grow"
+            type="range"
+            name="playSpeed"
+            min={0.2}
+            max={3}
+            defaultValue={1}
+            step={0.1}
+            onChange={onPlaySpeedChange}
+            disabled={quadtreeState !== ComponentState.UnMounted}
+          />
+          <div className="align-middle">{playSpeed}</div>
         </div>
         <p className="backdrop-blur-sm sm:backdrop-blur-none">
           The main idea in the estimation is that a group of far away bodies can be approximated

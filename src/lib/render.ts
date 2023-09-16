@@ -97,9 +97,6 @@ export class LineSegment
   implements Poolable<[SVGSVGElement, string, number, number, number, number, number, number]>
 {
   el: SVGLineElement
-  color: string
-  opacity: number
-  strokeWidth: number
 
   constructor(
     svg: SVGSVGElement,
@@ -113,12 +110,6 @@ export class LineSegment
   ) {
     this.el = document.createElementNS(SVGNS, "line")
     this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
-    this.color = color
-    this.opacity = opacity
-    this.strokeWidth = strokeWidth
-    this.el.setAttributeNS(null, "stroke", color)
-    this.el.setAttributeNS(null, "opacity", opacity.toString())
-    this.el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
     this.set(svg, color, opacity, strokeWidth, x1, y1, x2, y2)
     svg.appendChild(this.el)
   }
@@ -137,19 +128,9 @@ export class LineSegment
     this.el.setAttributeNS(null, "x2", x2.toString())
     this.el.setAttributeNS(null, "y1", y1.toString())
     this.el.setAttributeNS(null, "y2", y2.toString())
-
-    if (color !== this.color) {
-      this.el.setAttributeNS(null, "stroke", color)
-      this.color = color
-    }
-    if (opacity !== this.opacity) {
-      this.el.setAttributeNS(null, "opacity", opacity.toString())
-      this.opacity = opacity
-    }
-    if (strokeWidth !== this.strokeWidth) {
-      this.el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
-      this.strokeWidth = strokeWidth
-    }
+    this.el.setAttributeNS(null, "opacity", opacity.toString())
+    this.el.setAttributeNS(null, "stroke", color)
+    this.el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
   }
 
   free() {
@@ -172,9 +153,6 @@ export function renderLineSegment(
 
 class Rectangle implements Poolable<[SVGSVGElement, BoundariesInterface, string, number, boolean]> {
   el: SVGRectElement
-  color: string
-  opacity: number
-  dashed: boolean
 
   constructor(
     svg: SVGSVGElement,
@@ -189,10 +167,6 @@ class Rectangle implements Poolable<[SVGSVGElement, BoundariesInterface, string,
     this.el.setAttributeNS(null, "fill-opacity", "0")
     this.el.setAttributeNS(null, "stroke-width", "2")
 
-    // cached properties
-    this.color = color
-    this.opacity = opacity
-    this.dashed = dashed
     this.el.setAttributeNS(null, "stroke", color)
     this.el.setAttributeNS(null, "opacity", opacity.toString())
     if (dashed) this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
@@ -207,28 +181,17 @@ class Rectangle implements Poolable<[SVGSVGElement, BoundariesInterface, string,
     opacity: number,
     dashed: boolean = false
   ) {
-    this.el.removeAttributeNS(null, "display")
     this.el.setAttributeNS(null, "x", (rectangle.centerX - rectangle.size / 2).toString())
     this.el.setAttributeNS(null, "y", (rectangle.centerY - rectangle.size / 2).toString())
     this.el.setAttributeNS(null, "height", rectangle.size.toString())
     this.el.setAttributeNS(null, "width", rectangle.size.toString())
-
-    if (color !== this.color) {
-      this.el.setAttributeNS(null, "stroke", color)
-      this.color = color
-    }
-    if (opacity !== this.opacity) {
-      this.el.setAttributeNS(null, "opacity", opacity.toString())
-      this.opacity = opacity
-    }
-    if (dashed !== this.dashed) {
-      if (dashed) this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
-      else this.el.removeAttributeNS(null, "stroke-dasharray")
-      this.dashed = dashed
-    }
+    this.el.setAttributeNS(null, "opacity", opacity.toString())
+    this.el.setAttributeNS(null, "stroke", color)
+    if (dashed) this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
+    else this.el.removeAttributeNS(null, "stroke-dasharray")
   }
   free() {
-    this.el.setAttributeNS(null, "display", "none")
+    this.el.setAttributeNS(null, "opacity", "0")
     free(Rectangle, this)
   }
 }
@@ -266,9 +229,9 @@ class Circle implements Poolable<[SVGSVGElement, CentreOfMass, string, number, n
     this.el.setAttributeNS(null, "cx", body.massX.toString())
     this.el.setAttributeNS(null, "cy", body.massY.toString())
     this.el.setAttributeNS(null, "r", size.toString())
+    this.el.setAttributeNS(null, "opacity", opacity.toString())
+    this.el.setAttributeNS(null, "opacity", opacity.toString())
     this.el.setAttributeNS(null, "fill", color)
-    this.el.setAttributeNS(null, "opacity", opacity.toString())
-    this.el.setAttributeNS(null, "opacity", opacity.toString())
   }
   free() {
     this.el.setAttributeNS(null, "opacity", "0")

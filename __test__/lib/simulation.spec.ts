@@ -1,3 +1,5 @@
+import { test, describe, expect, beforeAll } from "bun:test"
+
 import { Body, CentreOfMass, QuadBase } from "../../src/lib/interface"
 import {
   Empty,
@@ -15,13 +17,21 @@ import {
   createQuadAndInsertBodies,
   getQuadForBody,
 } from "../../src/lib/simulation"
+import { getPool } from "src/lib/pool"
 
 function expectEqual<T>(provided: T, expected: T): void {
   expect(provided).toEqual(expected)
 }
 
 describe("Simulation function", () => {
-  it("Mass centre function should work correctly", () => {
+  beforeAll(() => {
+    // instantiate pools so free() does not throw
+    getPool(Empty)
+    getPool(Leaf)
+    getPool(Fork)
+  })
+
+  test("Mass centre function should work correctly", () => {
     const b1: CentreOfMass = { mass: 1, massX: 5, massY: 10 }
     const b2: CentreOfMass = { mass: 1, massX: 15, massY: 15 }
     {
@@ -37,7 +47,7 @@ describe("Simulation function", () => {
       expect(massY).toBe(12.5)
     }
   })
-  it("Add force should work correctly", () => {
+  test("Add force should work correctly", () => {
     const b1: CentreOfMass = { mass: 1, massX: 5, massY: 10 }
     const b2: CentreOfMass = { mass: 1, massX: 15, massY: 15 }
 
@@ -46,23 +56,23 @@ describe("Simulation function", () => {
     expect(force[1]).toBeCloseTo((100 * 5) / Math.pow(125, 3 / 2), 8)
   })
 
-  it("Empty: center of mass should be the center of the cell", () => {
+  test("Empty: center of mass should be the center of the cell", () => {
     const quad = new Empty(51, 46.3, 5)
     expect(quad.massX).toBe(51)
     expect(quad.massY).toBe(46.3)
   })
 
-  it("Empty: mass should be 0", () => {
+  test("Empty: mass should be 0", () => {
     const quad = new Empty(51, 46.3, 5)
     expect(quad.mass).toBe(0)
   })
 
-  it("Empty: total should be 0", () => {
+  test("Empty: total should be 0", () => {
     const quad = new Empty(51, 46.3, 5)
     expect(quad.total).toBe(0)
   })
 
-  it("Leaf with 1 body", () => {
+  test("Leaf with 1 body", () => {
     const b: CentreOfMass = { mass: 123, massX: 18, massY: 26 }
     const quad = new Leaf(17.5, 27.5, 5, [b])
 
@@ -72,7 +82,7 @@ describe("Simulation function", () => {
     expect(quad.total).toBe(1)
   })
 
-  it("Fork with 3 empty quadrants and 1 leaf", () => {
+  test("Fork with 3 empty quadrants and 1 leaf", () => {
     const b: CentreOfMass = { mass: 123, massX: 18, massY: 26 }
     const nw = new Leaf(17.5, 27.5, 5, [b])
 
@@ -93,7 +103,7 @@ describe("Simulation function", () => {
   })
 
   // class Body(val mass: Float, val x: Float, val y: Float, val xspeed: Float, val yspeed: Float)
-  it("Empty.insert(b) should return a Leaf with only that body", () => {
+  test("Empty.insert(b) should return a Leaf with only that body", () => {
     const quad = new Empty(51, 46.3, 5)
     const b: CentreOfMass = { mass: 3, massX: 54, massY: 46 }
     const inserted = quad.insert(b)
@@ -105,7 +115,7 @@ describe("Simulation function", () => {
     expect(inserted.bodies).toEqual([b])
   })
 
-  it("'insert' should work correctly on a leaf with center (1,1) and size 2", () => {
+  test("'insert' should work correctly on a leaf with center (1,1) and size 2", () => {
     const b1: CentreOfMass = { mass: 1, massX: 0.5, massY: 0.5 }
     const b2: CentreOfMass = { mass: 5, massX: 1.5, massY: 0.5 }
 
@@ -128,7 +138,7 @@ describe("Simulation function", () => {
     }
     throw new Error("No leaf was found")
   }
-  it("Leaf.insert(b) should return a new Fork if size > minimumSize", () => {
+  test("Leaf.insert(b) should return a new Fork if size > minimumSize", () => {
     const b: Body = { mass: 123, massX: 18, massY: 26, xSpeed: 0, ySpeed: 0 }
     const leaf1 = new Leaf(17.5, 27.5, 5, []).insert(b)
 
@@ -222,7 +232,7 @@ describe("Simulation function", () => {
     expect(last.massY).toBeCloseTo((3 * thirdDeepest.massY + b1.massY) / 4, 8)
   })
 
-  it("Body.updated should take bodies in a Leaf into account", () => {
+  test("Body.updated should take bodies in a Leaf into account", () => {
     const b1: Body = { mass: 123, massX: 18, massY: 26, xSpeed: 0, ySpeed: 0 }
     const b2: CentreOfMass = { mass: 524.5, massX: 24.5, massY: 25.5 }
     const b3: CentreOfMass = { mass: 245, massX: 22.4, massY: 41 }
@@ -249,7 +259,7 @@ describe("Simulation function", () => {
 
   // it cases for Body
 
-  it("Body.updated should do nothing for Empty quad tree", () => {
+  test("Body.updated should do nothing for Empty quad tree", () => {
     const b: Body = { mass: 123, massX: 18, massY: 26, xSpeed: 0, ySpeed: 0 }
 
     const body = update(b, new Empty(50, 60, 5))
@@ -258,7 +268,7 @@ describe("Simulation function", () => {
     expect(body.ySpeed).toBe(0)
   })
 
-  it("Add force should calculate correctly", () => {
+  test("Add force should calculate correctly", () => {
     const b1: Body = { mass: 1, massX: 0, massY: 0, xSpeed: 0, ySpeed: 0 }
     const b2: CentreOfMass = { mass: 1, massX: 0, massY: 2 }
 
@@ -267,7 +277,7 @@ describe("Simulation function", () => {
     expect(netYForce).toBe(25)
   })
 
-  it("Add force to body should calculate correctly", () => {
+  test("Add force to body should calculate correctly", () => {
     const b1: Body = { mass: 1, massX: 0, massY: 0, xSpeed: 0, ySpeed: 0 }
 
     const [netXForce, netYForce] = [0, 100]
@@ -280,7 +290,7 @@ describe("Simulation function", () => {
     expect(body.ySpeed).toBe(1)
   })
 
-  it("Body.updated should take bodies in a Leaf into account", () => {
+  test("Body.updated should take bodies in a Leaf into account", () => {
     const b1: Body = { mass: 1, massX: 20, massY: 20, xSpeed: 0, ySpeed: 0 }
     const b2: CentreOfMass = { mass: 1, massX: 15, massY: 20 }
     const b3: CentreOfMass = { mass: 1, massX: 25, massY: 20 }
@@ -295,7 +305,7 @@ describe("Simulation function", () => {
     expect(body.ySpeed).toBe(0)
   })
 
-  it("A fork with 4 bodies of equal mass in all four corners should impart a force due south east for the north west body", () => {
+  test("A fork with 4 bodies of equal mass in all four corners should impart a force due south east for the north west body", () => {
     const b1: Body = { mass: 1, massX: 0, massY: 0, xSpeed: 0, ySpeed: 0 }
     const b2: CentreOfMass = { mass: 1, massX: 0, massY: 100 }
     const b3: CentreOfMass = { mass: 1, massX: 100, massY: 0 }
@@ -309,7 +319,7 @@ describe("Simulation function", () => {
     expect(body.ySpeed).toBeGreaterThan(0)
   })
 
-  it("3 bodies far away should approximate the force to the centre of mass of the three bodies", () => {
+  test("3 bodies far away should approximate the force to the centre of mass of the three bodies", () => {
     const b1: Body = { mass: 1, massX: 0, massY: 0, xSpeed: 1, ySpeed: 1 }
     const b2: CentreOfMass = { mass: 1, massX: 62.5, massY: 87.5 }
     const b3: CentreOfMass = { mass: 1, massX: 87.5, massY: 87.5 }
@@ -335,7 +345,7 @@ describe("Simulation function", () => {
     expect(body.xSpeed).toBeCloseTo(b1.xSpeed + dSpeedX, 8)
   })
 
-  it("A large quad tree should update a body correctly", () => {
+  test("A large quad tree should update a body correctly", () => {
     const b1: Body = { mass: 1, massX: 25, massY: 25, xSpeed: 0, ySpeed: 0 }
     const b2: CentreOfMass = { mass: 1, massX: 76, massY: 3 }
     const b3: CentreOfMass = { mass: 1, massX: 85, massY: 5 }
@@ -396,7 +406,7 @@ describe("Simulation function", () => {
 
   // Boundaries
 
-  it("Get boundaries should create a correct boundary for a set of obvious points", () => {
+  test("Get boundaries should create a correct boundary for a set of obvious points", () => {
     const b1: CentreOfMass = { mass: 1, massX: 25, massY: 25 }
     const b2: CentreOfMass = { mass: 1, massX: 76, massY: 3 }
     const b3: CentreOfMass = { mass: 1, massX: 85, massY: 5 }
@@ -411,7 +421,7 @@ describe("Simulation function", () => {
 
   // eliminate outliers
 
-  it("Eliminate outliers should create a predicate which is false for a body which it definitely not an outlier", () => {
+  test("Eliminate outliers should create a predicate which is false for a body which it definitely not an outlier", () => {
     const b1: Body = {
       mass: 1,
       massX: 25,
@@ -434,7 +444,7 @@ describe("Simulation function", () => {
     expect(pred(b1)).toBeTruthy()
   })
 
-  it("Eliminate outliers should create a predicate which is true for a body travelling over escape velocity", () => {
+  test("Eliminate outliers should create a predicate which is true for a body travelling over escape velocity", () => {
     const b1: Body = {
       mass: 1,
       massX: 25,
@@ -457,7 +467,7 @@ describe("Simulation function", () => {
     expect(pred(b1)).toBeFalsy()
   })
 
-  it("Don't eliminate outliers which are traveling at high velocity towards the centre of mass", () => {
+  test("Don't eliminate outliers which are traveling at high velocity towards the centre of mass", () => {
     const b1: Body = {
       mass: 1,
       massX: 25,
@@ -480,7 +490,7 @@ describe("Simulation function", () => {
     expect(pred(b1)).toBeTruthy()
   })
 
-  it("Eliminate outliers should create a predicate which is true for a body travelling over escape velocity", () => {
+  test("Eliminate outliers should create a predicate which is true for a body travelling over escape velocity", () => {
     const body: Body = {
       mass: 87.5,
       massX: 400,
@@ -502,7 +512,7 @@ describe("Simulation function", () => {
     expect(pred(body)).toBeTruthy()
   })
 
-  it("Eliminate outliers should create a predicate which is true for a body travelling over escape velocity", () => {
+  test("Eliminate outliers should create a predicate which is true for a body travelling over escape velocity", () => {
     const body: Body = {
       mass: 1.8340438833592967,
       massX: 2181.8829430798787,

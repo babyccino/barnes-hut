@@ -32,20 +32,21 @@ export default function Home(): JSX.Element {
   const mobile = useMediaQuery("(min-width: 640px)")
   const [simRunning, setSimRunning] = useState(true)
   const [theta, setTheta] = useState(0.5)
-  const [renderCalculatedQuads, setRenderCalculatedQuads] = useState(false)
-  const [renderUncalcuatedQuads, setRenderUncalcuatedQuads] = useState(false)
+  const [renderQuads, setRenderQuads] = useState(false)
   const [nodeCount, setNodeCount] = useState(MAX_GALAXY_SIZE)
+  const [playSpeed, setPlaySpeed] = useState(1)
   const [quadtreeState, setQuadtreeState] = useState(ComponentState.UnMounted)
 
+  const onPlaySpeedChange: ChangeEventHandler<HTMLInputElement> = e => {
+    setPlaySpeed(e.target.valueAsNumber)
+  }
   const onNodeCount: ChangeEventHandler<HTMLInputElement> = e => {
     setNodeCount(e.target.valueAsNumber)
     setSimRunning(false)
-    setRenderCalculatedQuads(false)
-    setRenderUncalcuatedQuads(true)
+    setRenderQuads(false)
   }
   const onTheta: ChangeEventHandler<HTMLInputElement> = e => {
-    setRenderCalculatedQuads(true)
-    setRenderUncalcuatedQuads(true)
+    setRenderQuads(true)
     setTheta(e.target.valueAsNumber)
     !mobile &&
       scroller.scrollTo("theta", {
@@ -61,8 +62,7 @@ export default function Home(): JSX.Element {
     } else setSimRunning(true)
   }
   const turnOffGraphics = (): void => {
-    setRenderCalculatedQuads(false)
-    setRenderUncalcuatedQuads(false)
+    setRenderQuads(state => !state)
   }
   const toggleQuadtreeAnimation = (): void => {
     if (quadtreeState === ComponentState.Mounted) {
@@ -90,13 +90,14 @@ export default function Home(): JSX.Element {
     <main className="flex justify-end sm:w-1/2">
       {quadtreeState !== ComponentState.Mounted ? (
         <Simulation
-          className={`fixed w-full bottom-1/2 translate-y-1/2 sm:left-1/2 sm:max-w-[50%]
-            max-h-full ${quadtreeState === ComponentState.Mounting ? "fadeOut" : "fadeIn"}`}
+          className={`fixed h-full top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 sm:h-auto sm:w-full sm:-translate-x-1/4 ${
+            quadtreeState === ComponentState.Mounting ? "fadeOut" : "fadeIn"
+          }`}
           nodeCount={nodeCount}
           running={simRunning}
-          renderCalculatedQuads={renderCalculatedQuads}
-          renderUncalcuatedQuads={renderUncalcuatedQuads}
+          renderCalculatedQuads={renderQuads}
           theta={theta}
+          playSpeed={playSpeed}
         />
       ) : null}
       {quadtreeState !== ComponentState.UnMounted ? (
@@ -136,6 +137,21 @@ export default function Home(): JSX.Element {
             disabled={quadtreeState !== ComponentState.UnMounted}
           />
           <div className="align-middle">{nodeCount}</div>
+        </div>
+        <div className="backdrop-blur-sm sm:backdrop-blur-none flex flex-row pt-2 gap-4 m-auto">
+          <label htmlFor="playSpeed">Play speed</label>
+          <input
+            className="grow"
+            type="range"
+            name="playSpeed"
+            min={0.2}
+            max={3}
+            defaultValue={1}
+            step={0.1}
+            onChange={onPlaySpeedChange}
+            disabled={quadtreeState !== ComponentState.UnMounted}
+          />
+          <div className="align-middle">{playSpeed}</div>
         </div>
         <p className="backdrop-blur-sm sm:backdrop-blur-none">
           The main idea in the estimation is that a group of far away bodies can be approximated
@@ -182,7 +198,7 @@ export default function Home(): JSX.Element {
         </div>
         <div className="backdrop-blur-sm sm:backdrop-blur-none w-full flex justify-center gap-6">
           <Button onClick={startStop}>Start/stop</Button>
-          <Button onClick={turnOffGraphics}>Turn off graphics</Button>
+          <Button onClick={turnOffGraphics}>Turn {renderQuads ? "off" : "on"} graphics</Button>
         </div>
       </div>
     </main>

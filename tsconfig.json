@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "types": ["bun-types"], // this is necessary
+    "baseUrl": ".",
+    "target": "ES2015",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,

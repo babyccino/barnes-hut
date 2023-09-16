@@ -1,7 +1,8 @@
 import { Body, Boundaries, CentreOfMass, ForkInterface, QuadBase } from "./interface"
+import { Poolable, acquire, free } from "./pool"
 import { distance, getQuadrant, unitVector } from "./util"
 
-export class Empty extends QuadBase {
+export class Empty extends QuadBase implements Poolable<[number, number, number]> {
   constructor(centerX: number, centerY: number, size: number) {
     super({
       massX: centerX,
@@ -14,11 +15,24 @@ export class Empty extends QuadBase {
     })
   }
 
+  set(centerX: number, centerY: number, size: number) {
+    this.massX = centerX
+    this.massY = centerY
+    this.centerX = centerX
+    this.centerY = centerY
+    this.size = size
+  }
+
   insert(body: CentreOfMass): Leaf {
-    return new Leaf(this.centerX, this.centerY, this.size, [body])
+    this.free()
+    return acquire(Leaf, this.centerX, this.centerY, this.size, [body])
+  }
+
+  free() {
+    free(Empty, this)
   }
 }
-export class Leaf extends QuadBase {
+export class Leaf extends QuadBase implements Poolable<[number, number, number, CentreOfMass[]]> {
   bodies: CentreOfMass[]
 
   constructor(centerX: number, centerY: number, size: number, bodies: CentreOfMass[]) {
@@ -37,6 +51,23 @@ export class Leaf extends QuadBase {
     this.bodies = bodies
   }
 
+  set(centerX: number, centerY: number, size: number, bodies: CentreOfMass[]) {
+    const [mass, massX, massY] = getMassCentre(bodies)
+
+    this.massX = massX
+    this.massY = massY
+    this.mass = mass
+    this.centerX = centerX
+    this.centerY = centerY
+    this.size = size
+    this.bodies = bodies
+    this.total = bodies.length
+  }
+
+  free() {
+    free(Leaf, this)
+  }
+
   update(): Leaf {
     ;[this.mass, this.massX, this.massY] = getMassCentre(this.bodies)
     return this
@@ -46,14 +77,14 @@ export class Leaf extends QuadBase {
     this.bodies.push(body)
     ++this.total
     if (this.size > MINIMUM_SIZE && this.bodies.length > 1) {
-      // prettier-ignore
+      this.free()
       return createForkAndInsertBodies(this.centerX, this.centerY, this.size, this.bodies)
     } else {
       return this.update()
     }
   }
 }
-export class Fork extends QuadBase implements ForkInterface {
+export class Fork extends QuadBase implements ForkInterface, Poolable<[Quad, Quad, Quad, Quad]> {
   nw: Quad
   ne: Quad
   sw: Quad
@@ -71,6 +102,25 @@ export class Fork extends QuadBase implements ForkInterface {
       total: nw.total + ne.total + sw.total + se.total,
     })
     ;[this.nw, this.ne, this.sw, this.se] = [nw, ne, sw, se]
+  }
+  set(nw: Quad, ne: Quad, sw: Quad, se: Quad) {
+    const [mass, massX, massY] = getMassCentre(nw, ne, sw, se)
+    this.massX = massX
+    this.massY = massY
+    this.mass = mass
+    this.centerX = (nw.centerX + ne.centerX) / 2
+    this.centerY = (nw.centerY + sw.centerY) / 2
+    this.size = nw.size * 2
+    this.total = nw.total + ne.total + sw.total + se.total
+    ;[this.nw, this.ne, this.sw, this.se] = [nw, ne, sw, se]
+  }
+
+  free() {
+    this.nw.free()
+    this.ne.free()
+    this.sw.free()
+    this.se.free()
+    free(Fork, this)
   }
 
   update(): Fork {
@@ -107,16 +157,21 @@ export function addForce(body: CentreOfMass, otherBody: CentreOfMass): [number, 
   } else return [0, 0]
 }
 
-export function addForceToBody(body: Body, netXForce: number, netYForce: number): Body {
-  const massX = body.massX + body.xSpeed * DELTA
-  const massY = body.massY + body.ySpeed * DELTA
-  const xSpeed = body.xSpeed + (netXForce / body.mass) * DELTA
-  const ySpeed = body.ySpeed + (netYForce / body.mass) * DELTA
+export function addForceToBody(
+  body: Body,
+  netXForce: number,
+  netYForce: number,
+  multiplier: number = 1
+): Body {
+  const massX = body.massX + body.xSpeed * DELTA * multiplier
+  const massY = body.massY + body.ySpeed * DELTA * multiplier
+  const xSpeed = body.xSpeed + (netXForce / body.mass) * DELTA * multiplier
+  const ySpeed = body.ySpeed + (netYForce / body.mass) * DELTA * multiplier
 
   return { massX, massY, mass: body.mass, xSpeed, ySpeed }
 }
 
-export function standardNBody(body: Body, bodies: CentreOfMass[]): Body {
+export function standardNBody(body: Body, bodies: CentreOfMass[], multiplier: number): Body {
   let netXForce = 0
   let netYForce = 0
   for (const otherBody of bodies) {
@@ -126,7 +181,7 @@ export function standardNBody(body: Body, bodies: CentreOfMass[]): Body {
     netYForce += dForce[1]
   }
 
-  return addForceToBody(body, netXForce, netYForce)
+  return addForceToBody(body, netXForce, netYForce, multiplier)
 }
 
 function getBodies(...bodies: any[]): CentreOfMass[] {
@@ -162,11 +217,12 @@ export function getBoundaries(nodes: CentreOfMass[]): Boundaries {
 }
 
 const createEmptyFork = (x: number, y: number, size: number): Fork =>
-  new Fork(
-    new Empty(x - size / 4, y - size / 4, size / 2),
-    new Empty(x + size / 4, y - size / 4, size / 2),
-    new Empty(x - size / 4, y + size / 4, size / 2),
-    new Empty(x + size / 4, y + size / 4, size / 2)
+  acquire(
+    Fork,
+    acquire(Empty, x - size / 4, y - size / 4, size / 2) as Empty,
+    acquire(Empty, x + size / 4, y - size / 4, size / 2) as Empty,
+    acquire(Empty, x - size / 4, y + size / 4, size / 2) as Empty,
+    acquire(Empty, x + size / 4, y + size / 4, size / 2) as Empty
   )
 
 export function createForkAndInsertBodies(
@@ -185,7 +241,7 @@ export function createQuadAndInsertBodies(
   size: number,
   bodies: CentreOfMass[]
 ): Quad {
-  const newFork = new Empty(x, y, size)
+  const newFork = acquire(Empty, x, y, size) as Empty
   return bodies.reduce<Quad>((quad, body) => quad.insert(body), newFork)
 }
 
@@ -195,7 +251,7 @@ export function getQuadForBody(body: CentreOfMass, quad: Quad): Leaf | null {
   else return null
 }
 
-export function update(body: Body, quad: Quad): Body {
+export function update(body: Body, quad: Quad, multiplier: number = 1): Body {
   let netXForce = 0
   let netYForce = 0
   function traverse(quad: Quad, depth: number): void {
@@ -224,18 +280,17 @@ export function update(body: Body, quad: Quad): Body {
   }
   traverse(quad, 0)
 
-  return addForceToBody(body, netXForce, netYForce)
+  return addForceToBody(body, netXForce, netYForce, multiplier)
 }
 
-const ELIMINATION_THRESHOLD = 0.5
 export const eliminateOutliers =
-  (quad: QuadBase) =>
-  (body: Body): boolean => {
+  (quad: QuadBase, threshold: number = 0.5) =>
+  (body: Body) => {
     const dx = quad.massX - body.massX
     const dy = quad.massY - body.massY
     const d = Math.sqrt(dx * dx + dy * dy)
     // object is far away from the center of the mass
-    if (d > ELIMINATION_THRESHOLD * quad.size) {
+    if (d > threshold * quad.size) {
       const nx = dx / d
       const ny = dy / d
       const relativeSpeed = body.xSpeed * nx + body.ySpeed * ny

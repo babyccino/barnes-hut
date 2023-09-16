@@ -5,7 +5,7 @@ import { Empty, Fork, Leaf, Quad, THETA, willCalc } from "./simulation"
 export type Line = readonly [number, number]
 export type Intervals = Line[]
 export class IntervalMap extends Map<number, Intervals> {}
-export type IntervalMapCb = (intervals: Intervals, key: number, map: IntervalMap) => void
+export type IntervalMapCb = Parameters<IntervalMap["forEach"]>[0]
 
 export function roundHalf(num: number): number {
   return Math.round(num * 2) / 2

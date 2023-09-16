@@ -38,15 +38,6 @@ export function getQuadrant(body: CentreOfMass, quad: BoundariesInterface): keyo
   else return "nw"
 }
 
-/**
- * For arrays [a1, a2, ..., an, an+1, ...] and [b1, b2, ..., bn] produces the new array:
- * [a1, b1, a2, b2, ..., an, bn, an+1, ... ]
- * If the arrays are the same size arr1[0] will be the first element of the new array
- * Otherwise the first element of the larger array will come first
- * @param arr1
- * @param arr2
- * @returns
- */
 export function interweaveArrays<T>(arr1: T[], arr2: T[]): T[] {
   const ret: T[] = []
   const smaller = arr1.length < arr2.length ? arr1 : arr2
@@ -56,3 +47,8 @@ export function interweaveArrays<T>(arr1: T[], arr2: T[]): T[] {
   }
   return ret.concat(larger.slice(smaller.length))
 }
+
+export const range = (from: number, to: number): number[] =>
+  Array.from(new Array(to - from), (_, i) => i + from)
+
+export const grey = (opacity: number) => `rgba(155, 155, 155, ${opacity})`

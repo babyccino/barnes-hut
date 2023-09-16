@@ -1,139 +1,106 @@
-import { GALAXY } from "./galaxy"
-import { Body, BoundariesInterface, CentreOfMass, QuadBase } from "./interface"
-import { getAllLines, Line } from "./lines"
-import {
-  Empty,
-  Leaf,
-  Quad,
-  Fork,
-  createQuadAndInsertBodies,
-  getBoundaries,
-  getQuadForBody,
-} from "./simulation"
-import { getQuadrant } from "./util"
+import { Body, BoundariesInterface, CentreOfMass } from "./interface"
+import { IntervalMap, Line, addLinesFromQuad, mergeIntervals } from "./lines"
+import { Fork, Leaf, Quad, willCalc } from "./simulation"
+import { getQuadrant, grey } from "./util"
 
-export const SVGNS = "http://www.w3.org/2000/svg"
-
-export interface SvgNode extends Body {
-  el: SVGCircleElement
+export interface BodyGraphic extends Body {
   color: string
-}
-
-export function createNode(
-  svg: SVGSVGElement,
-  node: Body,
-  color: string,
-  opacity: number,
-  blackHole: boolean = false
-): SvgNode {
-  const el = document.createElementNS(SVGNS, "circle")
-  el.setAttributeNS(null, "cx", node.massX.toString())
-  el.setAttributeNS(null, "cy", node.massY.toString())
-  el.setAttributeNS(null, "r", blackHole ? "8" : (node.mass * 4).toString())
-  el.setAttributeNS(null, "fill", color)
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  svg.appendChild(el)
-
-  const newNode: SvgNode = Object.assign({ el, color }, node)
-
-  return newNode
-}
-
-export function removeNodes(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
-  while (count--) {
-    const node = nodes.pop()
-    if (!node) return
-    svg.removeChild(node.el)
-  }
+  size: number
 }
 
 export function renderLine(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   line: Line,
   horizontal: boolean,
   transverse: number,
   color: string,
-  opacity: number
-): SVGLineElement {
-  const [x1, x2] = horizontal ? line : [transverse, transverse]
-  const [y1, y2] = horizontal ? [transverse, transverse] : line
-
-  return renderLineSegment(svg, [x1, y1, x2, y2], color, opacity, 2)
+  dashed: boolean
+) {
+  let x1, x2, y1, y2
+  if (horizontal) {
+    x1 = line[0]
+    x2 = line[1]
+    y1 = y2 = transverse
+    y2 = transverse
+  } else {
+    x1 = transverse
+    x2 = transverse
+    y1 = line[0]
+    y2 = line[1]
+  }
+  return renderLineSegment(canvas, color, 2, dashed, x1, y1, x2, y2)
 }
 
 export function renderLineBetweenBodies(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   body1: CentreOfMass,
   body2: CentreOfMass,
-  color: string,
-  opacity: number
-): SVGLineElement {
-  const line = [body1.massX, body1.massY, body2.massX, body2.massY] as const
+  color: string
+) {
+  return renderLineSegment(
+    canvas,
+    color,
+    4,
+    true,
+    body1.massX,
+    body1.massY,
+    body2.massX,
+    body2.massY
+  )
+}
 
-  return renderLineSegment(svg, line, color, opacity, 4)
+function setDashed(canvas: CanvasRenderingContext2D, dashed: boolean) {
+  if (dashed) canvas.setLineDash([5, 10])
+  else canvas.setLineDash([])
 }
 
 export function renderLineSegment(
-  svg: SVGSVGElement,
-  line: readonly [number, number, number, number],
+  canvas: CanvasRenderingContext2D,
   color: string,
-  opacity: number,
-  strokeWidth: number
-): SVGLineElement {
-  const el = document.createElementNS(SVGNS, "line")
-  const [x1, y1, x2, y2] = line
-
-  el.setAttributeNS(null, "x1", x1.toString())
-  el.setAttributeNS(null, "x2", x2.toString())
-  el.setAttributeNS(null, "y1", y1.toString())
-  el.setAttributeNS(null, "y2", y2.toString())
-
-  el.setAttributeNS(null, "stroke", color)
-  el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  el.setAttributeNS(null, "stroke-dasharray", "4 6")
-  svg.appendChild(el)
-
-  return el
+  strokeWidth: number,
+  dashed: boolean,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): void {
+  canvas.beginPath()
+  setDashed(canvas, dashed)
+  canvas.strokeStyle = color
+  canvas.lineWidth = strokeWidth
+  canvas.moveTo(x1, y1)
+  canvas.lineTo(x2, y2)
+  canvas.stroke()
 }
 
 export function renderRectangle(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   rectangle: BoundariesInterface,
   color: string,
-  opacity: number,
+  lineWidth: number,
   dashed: boolean = false
-): SVGRectElement {
-  const el = document.createElementNS(SVGNS, "rect")
-  el.setAttributeNS(null, "x", (rectangle.centerX - rectangle.size / 2).toString())
-  el.setAttributeNS(null, "y", (rectangle.centerY - rectangle.size / 2).toString())
-  el.setAttributeNS(null, "height", rectangle.size.toString())
-  el.setAttributeNS(null, "width", rectangle.size.toString())
-  el.setAttributeNS(null, "stroke", color)
-  el.setAttributeNS(null, "fill-opacity", "0")
-  el.setAttributeNS(null, "stroke-width", "2")
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  dashed && el.setAttributeNS(null, "stroke-dasharray", "4 6")
-  svg.appendChild(el)
-
-  return el
+): void {
+  canvas.strokeStyle = color
+  canvas.lineWidth = lineWidth
+  setDashed(canvas, dashed)
+  canvas.strokeRect(
+    rectangle.centerX - rectangle.size / 2,
+    rectangle.centerY - rectangle.size / 2,
+    rectangle.size,
+    rectangle.size
+  )
 }
 
 export function renderCircle(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   body: CentreOfMass,
   color: string,
-  opacity: number = 1,
   size: number = 0.7 * (body.mass - 1) + 4
-): SVGCircleElement {
-  const el = document.createElementNS(SVGNS, "circle")
-  el.setAttributeNS(null, "cx", body.massX.toString())
-  el.setAttributeNS(null, "cy", body.massY.toString())
-  el.setAttributeNS(null, "r", size.toString())
-  el.setAttributeNS(null, "fill", color)
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  svg.appendChild(el)
-  return el
+): void {
+  canvas.beginPath()
+  canvas.arc(body.massX, body.massY, size, 0, 2 * Math.PI, false)
+  canvas.fillStyle = color
+  canvas.fill()
 }
 
 function foundAddedQuad(
@@ -175,33 +142,64 @@ export function newLines(
   return newLines(newBody, newQuad[quadrant], oldQuad[quadrant], depthLimit, depth + 1)
 }
 
-export function highlightLastBody(
-  svg: SVGSVGElement,
-  bodies: Body[],
-  clearables: SVGElement[]
+export function animateQuadTree(
+  canvas: CanvasRenderingContext2D,
+  quad: Quad,
+  body: CentreOfMass,
+  theta: number
 ): void {
-  const body = bodies.at(-1)
-  if (body === undefined) return
+  /**
+   * The z-index of svg elements relies on the order in which they are added
+   * so to make sure the quads which are being calculated are rendered on top
+   * the tree needs to be traversed once to render the quads which will not be calculated
+   * and then again for the quads which will be traversed
+   *  */
+  const depthLimit = 100
 
-  const boundaries = getBoundaries(GALAXY)
-  const quad = createQuadAndInsertBodies(
-    boundaries.centerX,
-    boundaries.centerY,
-    boundaries.size,
-    bodies
+  const verticalLines = new IntervalMap()
+  const horizontalLines = new IntervalMap()
+
+  const leavesToRender: Leaf[] = []
+  const forksToRender: Quad[] = []
+
+  const traverse = (traversingQuad: Quad, depth: number = 0, passedCalc = false): void => {
+    if (depth >= depthLimit) return
+
+    const _willCalc = willCalc(traversingQuad, body, theta)
+    const isLeaf = traversingQuad instanceof Leaf
+
+    if (isLeaf || passedCalc || !_willCalc) {
+      addLinesFromQuad(traversingQuad, horizontalLines, verticalLines)
+    }
+    if (isLeaf && traversingQuad.bodies.includes(body)) return
+
+    if (!passedCalc && _willCalc) {
+      if (isLeaf) leavesToRender.push(traversingQuad)
+      else forksToRender.push(traversingQuad)
+    }
+
+    if (traversingQuad instanceof Fork) {
+      traverse(traversingQuad.nw, depth + 1, _willCalc)
+      traverse(traversingQuad.ne, depth + 1, _willCalc)
+      traverse(traversingQuad.sw, depth + 1, _willCalc)
+      traverse(traversingQuad.se, depth + 1, _willCalc)
+    }
+  }
+  traverse(quad)
+
+  horizontalLines.forEach((intervals, y) =>
+    mergeIntervals(intervals).forEach(line => renderLine(canvas, line, true, y, grey(0.4), true))
   )
-
-  const [horizontalLines, verticalLines] = getAllLines(quad)
-  horizontalLines.forEach((intervals, y) => {
-    intervals.forEach(line => clearables.push(renderLine(svg, line, true, y, "grey", 0.5)))
-  })
-  verticalLines.forEach((intervals, x) => {
-    intervals.forEach(line => clearables.push(renderLine(svg, line, false, x, "grey", 0.5)))
-  })
-
-  const leaf = getQuadForBody(body, quad) as Leaf
-  clearables.push(renderRectangle(svg, leaf, "red", 1))
-  clearables.push(
-    renderCircle(svg, { ...body, mass: (body.mass > 2 ? 8 : body.mass) * 4 }, "red", 1)
+  verticalLines.forEach((intervals, x) =>
+    mergeIntervals(intervals).forEach(line => renderLine(canvas, line, false, x, grey(0.4), true))
   )
+  for (const leaf of leavesToRender) {
+    renderCircle(canvas, leaf, "red", leaf.mass * 4.1)
+    renderLineBetweenBodies(canvas, leaf, body, "red")
+  }
+  for (const fork of forksToRender) {
+    renderRectangle(canvas, fork, "red", 2)
+    renderCircle(canvas, fork, "red", 5 * Math.sqrt(fork.mass))
+    renderLineBetweenBodies(canvas, fork, body, "red")
+  }
 }

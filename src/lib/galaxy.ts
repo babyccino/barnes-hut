@@ -2,8 +2,8 @@ import { Body } from "./interface"
 import { GEE } from "./simulation"
 import { interweaveArrays, rand } from "./util"
 
-export const MAX_GALAXY_SIZE = 500
-function init2Galaxies(totalBodies: number): Body[] {
+export const MAX_GALAXY_SIZE = 1000
+function init2Galaxies(totalBodies: number, offsetX: number, offsetY: number): Body[] {
   function galaxy(
     num: number,
     maxRadius: number,
@@ -49,8 +49,9 @@ function init2Galaxies(totalBodies: number): Body[] {
     return bodies
   }
 
-  const larger = galaxy((totalBodies / 5) * 4, 350.0, 400, 400, 10, 12)
-  const smaller = galaxy(totalBodies / 5, 300, 2200, 1600, -10, -12)
+  const larger = galaxy((totalBodies / 5) * 4, 350.0, 400 + offsetX, 400 + offsetY, 10, 12)
+  const smaller = galaxy(totalBodies / 5, 300, 2200 + offsetX, 1600 + offsetY, -10, -12)
   return interweaveArrays(larger, smaller)
 }
-export const GALAXY = init2Galaxies(MAX_GALAXY_SIZE)
+export const simGalaxy = init2Galaxies(MAX_GALAXY_SIZE, 1250, 1250)
+export const quadtreeAnimationGalaxy = init2Galaxies(MAX_GALAXY_SIZE, 0, 0)

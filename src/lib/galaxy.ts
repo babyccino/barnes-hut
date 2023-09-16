@@ -2,7 +2,7 @@ import { Body } from "./interface"
 import { GEE } from "./simulation"
 import { interweaveArrays, rand } from "./util"
 
-export const MAX_GALAXY_SIZE = 500
+export const MAX_GALAXY_SIZE = 1000
 function init2Galaxies(totalBodies: number): Body[] {
   function galaxy(
     num: number,

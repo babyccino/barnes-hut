@@ -32,20 +32,17 @@ export default function Home(): JSX.Element {
   const mobile = useMediaQuery("(min-width: 640px)")
   const [simRunning, setSimRunning] = useState(true)
   const [theta, setTheta] = useState(0.5)
-  const [renderCalculatedQuads, setRenderCalculatedQuads] = useState(false)
-  const [renderUncalcuatedQuads, setRenderUncalcuatedQuads] = useState(false)
+  const [renderQuads, setRenderQuads] = useState(false)
   const [nodeCount, setNodeCount] = useState(MAX_GALAXY_SIZE)
   const [quadtreeState, setQuadtreeState] = useState(ComponentState.UnMounted)
 
   const onNodeCount: ChangeEventHandler<HTMLInputElement> = e => {
     setNodeCount(e.target.valueAsNumber)
     setSimRunning(false)
-    setRenderCalculatedQuads(false)
-    setRenderUncalcuatedQuads(true)
+    setRenderQuads(false)
   }
   const onTheta: ChangeEventHandler<HTMLInputElement> = e => {
-    setRenderCalculatedQuads(true)
-    setRenderUncalcuatedQuads(true)
+    setRenderQuads(true)
     setTheta(e.target.valueAsNumber)
     !mobile &&
       scroller.scrollTo("theta", {
@@ -61,8 +58,7 @@ export default function Home(): JSX.Element {
     } else setSimRunning(true)
   }
   const turnOffGraphics = (): void => {
-    setRenderCalculatedQuads(false)
-    setRenderUncalcuatedQuads(false)
+    setRenderQuads(state => !state)
   }
   const toggleQuadtreeAnimation = (): void => {
     if (quadtreeState === ComponentState.Mounted) {
@@ -94,8 +90,7 @@ export default function Home(): JSX.Element {
             max-h-full ${quadtreeState === ComponentState.Mounting ? "fadeOut" : "fadeIn"}`}
           nodeCount={nodeCount}
           running={simRunning}
-          renderCalculatedQuads={renderCalculatedQuads}
-          renderUncalcuatedQuads={renderUncalcuatedQuads}
+          renderCalculatedQuads={renderQuads}
           theta={theta}
         />
       ) : null}
@@ -182,7 +177,7 @@ export default function Home(): JSX.Element {
         </div>
         <div className="backdrop-blur-sm sm:backdrop-blur-none w-full flex justify-center gap-6">
           <Button onClick={startStop}>Start/stop</Button>
-          <Button onClick={turnOffGraphics}>Turn off graphics</Button>
+          <Button onClick={turnOffGraphics}>Turn {renderQuads ? "off" : "on"} graphics</Button>
         </div>
       </div>
     </main>

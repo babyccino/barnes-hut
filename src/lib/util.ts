@@ -48,5 +48,7 @@ export function interweaveArrays<T>(arr1: T[], arr2: T[]): T[] {
   return ret.concat(larger.slice(smaller.length))
 }
 
-const range = (from: number, to: number): number[] =>
+export const range = (from: number, to: number): number[] =>
   Array.from(new Array(to - from), (_, i) => i + from)
+
+export const grey = (opacity: number) => `rgba(155, 155, 155, ${opacity})`

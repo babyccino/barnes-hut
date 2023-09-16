@@ -1,63 +1,20 @@
-import { GALAXY } from "./galaxy"
 import { Body, BoundariesInterface, CentreOfMass } from "./interface"
-import { IntervalMap, Line, addLinesFromQuad, getAllLines, mergeIntervals } from "./lines"
-import { Poolable, acquire, free } from "./pool"
-import {
-  Fork,
-  Leaf,
-  Quad,
-  createQuadAndInsertBodies,
-  eliminateOutliers,
-  getBoundaries,
-  getQuadForBody,
-  standardNBody,
-  update,
-  willCalc,
-} from "./simulation"
-import { getQuadrant } from "./util"
+import { IntervalMap, Line, addLinesFromQuad, mergeIntervals } from "./lines"
+import { Fork, Leaf, Quad, willCalc } from "./simulation"
+import { getQuadrant, grey } from "./util"
 
-export const SVGNS = "http://www.w3.org/2000/svg"
-
-export interface SvgNode extends Body {
-  el: SVGCircleElement
+export interface BodyGraphic extends Body {
   color: string
-}
-
-export function createNode(
-  svg: SVGSVGElement,
-  node: Body,
-  color: string,
-  opacity: number,
-  blackHole: boolean = false
-): SvgNode {
-  const el = document.createElementNS(SVGNS, "circle")
-  el.setAttributeNS(null, "cx", node.massX.toString())
-  el.setAttributeNS(null, "cy", node.massY.toString())
-  el.setAttributeNS(null, "r", blackHole ? "8" : (node.mass * 4).toString())
-  el.setAttributeNS(null, "fill", color)
-  el.setAttributeNS(null, "opacity", opacity.toString())
-  svg.appendChild(el)
-
-  const newNode: SvgNode = Object.assign({ el, color }, node)
-
-  return newNode
-}
-
-export function removeNodes(svg: SVGSVGElement, nodes: SvgNode[], count: number): void {
-  while (count--) {
-    const node = nodes.pop()
-    if (!node) return
-    svg.removeChild(node.el)
-  }
+  size: number
 }
 
 export function renderLine(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   line: Line,
   horizontal: boolean,
   transverse: number,
   color: string,
-  opacity: number
+  dashed: boolean
 ) {
   let x1, x2, y1, y2
   if (horizontal) {
@@ -71,21 +28,20 @@ export function renderLine(
     y1 = line[0]
     y2 = line[1]
   }
-  return renderLineSegment(svg, color, opacity, 2, x1, y1, x2, y2)
+  return renderLineSegment(canvas, color, 2, dashed, x1, y1, x2, y2)
 }
 
 export function renderLineBetweenBodies(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   body1: CentreOfMass,
   body2: CentreOfMass,
-  color: string,
-  opacity: number
+  color: string
 ) {
   return renderLineSegment(
-    svg,
+    canvas,
     color,
-    opacity,
     4,
+    true,
     body1.massX,
     body1.massY,
     body2.massX,
@@ -93,159 +49,58 @@ export function renderLineBetweenBodies(
   )
 }
 
-export class LineSegment
-  implements Poolable<[SVGSVGElement, string, number, number, number, number, number, number]>
-{
-  el: SVGLineElement
-
-  constructor(
-    svg: SVGSVGElement,
-    color: string,
-    opacity: number,
-    strokeWidth: number,
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number
-  ) {
-    this.el = document.createElementNS(SVGNS, "line")
-    this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
-    this.set(svg, color, opacity, strokeWidth, x1, y1, x2, y2)
-    svg.appendChild(this.el)
-  }
-
-  set(
-    svg: SVGSVGElement,
-    color: string,
-    opacity: number,
-    strokeWidth: number,
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number
-  ) {
-    this.el.setAttributeNS(null, "x1", x1.toString())
-    this.el.setAttributeNS(null, "x2", x2.toString())
-    this.el.setAttributeNS(null, "y1", y1.toString())
-    this.el.setAttributeNS(null, "y2", y2.toString())
-    this.el.setAttributeNS(null, "opacity", opacity.toString())
-    this.el.setAttributeNS(null, "stroke", color)
-    this.el.setAttributeNS(null, "stroke-width", strokeWidth.toString())
-  }
-
-  free() {
-    this.el.setAttributeNS(null, "opacity", "0")
-    free(LineSegment, this)
-  }
+function setDashed(canvas: CanvasRenderingContext2D, dashed: boolean) {
+  if (dashed) canvas.setLineDash([5, 10])
+  else canvas.setLineDash([])
 }
+
 export function renderLineSegment(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   color: string,
-  opacity: number,
   strokeWidth: number,
+  dashed: boolean,
   x1: number,
   y1: number,
   x2: number,
   y2: number
-): LineSegment {
-  return acquire(LineSegment, svg, color, opacity, strokeWidth, x1, y1, x2, y2)
+): void {
+  canvas.beginPath()
+  setDashed(canvas, dashed)
+  canvas.strokeStyle = color
+  canvas.lineWidth = strokeWidth
+  canvas.moveTo(x1, y1)
+  canvas.lineTo(x2, y2)
+  canvas.stroke()
 }
 
-class Rectangle implements Poolable<[SVGSVGElement, BoundariesInterface, string, number, boolean]> {
-  el: SVGRectElement
-
-  constructor(
-    svg: SVGSVGElement,
-    rectangle: BoundariesInterface,
-    color: string,
-    opacity: number,
-    dashed: boolean = false
-  ) {
-    this.el = document.createElementNS(SVGNS, "rect")
-
-    // static properties
-    this.el.setAttributeNS(null, "fill-opacity", "0")
-    this.el.setAttributeNS(null, "stroke-width", "2")
-
-    this.el.setAttributeNS(null, "stroke", color)
-    this.el.setAttributeNS(null, "opacity", opacity.toString())
-    if (dashed) this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
-
-    this.set(svg, rectangle, color, opacity, dashed)
-    svg.appendChild(this.el)
-  }
-  set(
-    svg: SVGSVGElement,
-    rectangle: BoundariesInterface,
-    color: string,
-    opacity: number,
-    dashed: boolean = false
-  ) {
-    this.el.setAttributeNS(null, "x", (rectangle.centerX - rectangle.size / 2).toString())
-    this.el.setAttributeNS(null, "y", (rectangle.centerY - rectangle.size / 2).toString())
-    this.el.setAttributeNS(null, "height", rectangle.size.toString())
-    this.el.setAttributeNS(null, "width", rectangle.size.toString())
-    this.el.setAttributeNS(null, "opacity", opacity.toString())
-    this.el.setAttributeNS(null, "stroke", color)
-    if (dashed) this.el.setAttributeNS(null, "stroke-dasharray", "4 6")
-    else this.el.removeAttributeNS(null, "stroke-dasharray")
-  }
-  free() {
-    this.el.setAttributeNS(null, "opacity", "0")
-    free(Rectangle, this)
-  }
-}
 export function renderRectangle(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   rectangle: BoundariesInterface,
   color: string,
-  opacity: number,
+  lineWidth: number,
   dashed: boolean = false
-): Rectangle {
-  return acquire(Rectangle, svg, rectangle, color, opacity, dashed)
+): void {
+  canvas.strokeStyle = color
+  canvas.lineWidth = lineWidth
+  setDashed(canvas, dashed)
+  canvas.strokeRect(
+    rectangle.centerX - rectangle.size / 2,
+    rectangle.centerY - rectangle.size / 2,
+    rectangle.size,
+    rectangle.size
+  )
 }
 
-class Circle implements Poolable<[SVGSVGElement, CentreOfMass, string, number, number]> {
-  el: SVGCircleElement
-
-  constructor(
-    svg: SVGSVGElement,
-    body: CentreOfMass,
-    color: string,
-    opacity: number = 1,
-    size: number = 0.7 * (body.mass - 1) + 4
-  ) {
-    this.el = document.createElementNS(SVGNS, "circle")
-    this.set(svg, body, color, opacity, size)
-    svg.appendChild(this.el)
-  }
-  set(
-    svg: SVGSVGElement,
-    body: CentreOfMass,
-    color: string,
-    opacity: number = 1,
-    size: number = 0.7 * (body.mass - 1) + 4
-  ) {
-    this.el.setAttributeNS(null, "cx", body.massX.toString())
-    this.el.setAttributeNS(null, "cy", body.massY.toString())
-    this.el.setAttributeNS(null, "r", size.toString())
-    this.el.setAttributeNS(null, "opacity", opacity.toString())
-    this.el.setAttributeNS(null, "opacity", opacity.toString())
-    this.el.setAttributeNS(null, "fill", color)
-  }
-  free() {
-    this.el.setAttributeNS(null, "opacity", "0")
-    free(Circle, this)
-  }
-}
 export function renderCircle(
-  svg: SVGSVGElement,
+  canvas: CanvasRenderingContext2D,
   body: CentreOfMass,
   color: string,
-  opacity: number = 1,
   size: number = 0.7 * (body.mass - 1) + 4
-): Circle {
-  return acquire(Circle, svg, body, color, opacity, size)
+): void {
+  canvas.beginPath()
+  canvas.arc(body.massX, body.massY, size, 0, 2 * Math.PI, false)
+  canvas.fillStyle = color
+  canvas.fill()
 }
 
 function foundAddedQuad(
@@ -287,70 +142,10 @@ export function newLines(
   return newLines(newBody, newQuad[quadrant], oldQuad[quadrant], depthLimit, depth + 1)
 }
 
-export function highlightLastBody(
-  svg: SVGSVGElement,
-  bodies: Body[],
-  clearableLines: Poolable<any>[]
-): void {
-  const body = bodies.at(-1)
-  if (body === undefined) return
-
-  const boundaries = getBoundaries(GALAXY)
-  const quad = createQuadAndInsertBodies(
-    boundaries.centerX,
-    boundaries.centerY,
-    boundaries.size,
-    bodies
-  )
-
-  const [horizontalLines, verticalLines] = getAllLines(quad)
-  horizontalLines.forEach((intervals, y) => {
-    intervals.forEach(line => clearableLines.push(renderLine(svg, line, true, y, "grey", 0.5)))
-  })
-  verticalLines.forEach((intervals, x) => {
-    intervals.forEach(line => clearableLines.push(renderLine(svg, line, false, x, "grey", 0.5)))
-  })
-
-  const leaf = getQuadForBody(body, quad) as Leaf
-  clearableLines.push(renderRectangle(svg, leaf, "red", 1))
-  clearableLines.push(
-    renderCircle(svg, { ...body, mass: (body.mass > 2 ? 8 : body.mass) * 4 }, "red", 1)
-  )
-  quad.free()
-}
-
-export function animateStandardNBody(svg: SVGSVGElement, nodes: SvgNode[]): SvgNode[] {
-  return nodes.map(node => {
-    const newNode = standardNBody(node, nodes)
-
-    node.el.setAttributeNS(null, "cx", node.massX.toString())
-    node.el.setAttributeNS(null, "cy", node.massY.toString())
-
-    return Object.assign(node, newNode)
-  })
-}
-
-export function animatePoints(svg: SVGSVGElement, nodes: SvgNode[], quad: Quad): SvgNode[] {
-  // remove svg elements if node is to be removed
-  const pred = eliminateOutliers(quad)
-  nodes.forEach(node => !pred(node) && svg.removeChild(node.el))
-
-  // filter nodes then animate them
-  return nodes.filter(pred).map(node => {
-    const newNode = update(node, quad)
-
-    node.el.setAttributeNS(null, "cx", newNode.massX.toString())
-    node.el.setAttributeNS(null, "cy", newNode.massY.toString())
-
-    return Object.assign(node, newNode)
-  })
-}
-
 export function animateQuadTree(
-  svg: SVGSVGElement,
-  _pooledObjs: Poolable<any>[],
+  canvas: CanvasRenderingContext2D,
   quad: Quad,
-  node: CentreOfMass,
+  body: CentreOfMass,
   theta: number
 ): void {
   /**
@@ -370,13 +165,13 @@ export function animateQuadTree(
   const traverse = (traversingQuad: Quad, depth: number = 0, passedCalc = false): void => {
     if (depth >= depthLimit) return
 
-    const _willCalc = willCalc(traversingQuad, node, theta)
+    const _willCalc = willCalc(traversingQuad, body, theta)
     const isLeaf = traversingQuad instanceof Leaf
 
     if (isLeaf || passedCalc || !_willCalc) {
       addLinesFromQuad(traversingQuad, horizontalLines, verticalLines)
     }
-    if (isLeaf && traversingQuad.bodies.includes(node)) return
+    if (isLeaf && traversingQuad.bodies.includes(body)) return
 
     if (!passedCalc && _willCalc) {
       if (isLeaf) leavesToRender.push(traversingQuad)
@@ -393,22 +188,18 @@ export function animateQuadTree(
   traverse(quad)
 
   horizontalLines.forEach((intervals, y) =>
-    mergeIntervals(intervals).forEach(line =>
-      _pooledObjs.push(renderLine(svg, line, true, y, "grey", 0.3))
-    )
+    mergeIntervals(intervals).forEach(line => renderLine(canvas, line, true, y, grey(0.4), true))
   )
   verticalLines.forEach((intervals, x) =>
-    mergeIntervals(intervals).forEach(line =>
-      _pooledObjs.push(renderLine(svg, line, false, x, "grey", 0.3))
-    )
+    mergeIntervals(intervals).forEach(line => renderLine(canvas, line, false, x, grey(0.4), true))
   )
   for (const leaf of leavesToRender) {
-    _pooledObjs.push(renderCircle(svg, leaf, "red", 1))
-    _pooledObjs.push(renderLineBetweenBodies(svg, leaf, node, "red", 0.5))
+    renderCircle(canvas, leaf, "red", leaf.mass * 4.1)
+    renderLineBetweenBodies(canvas, leaf, body, "red")
   }
   for (const fork of forksToRender) {
-    _pooledObjs.push(renderRectangle(svg, fork, "red", 1))
-    _pooledObjs.push(renderCircle(svg, fork, "red", 1))
-    _pooledObjs.push(renderLineBetweenBodies(svg, fork, node, "red", 0.5))
+    renderRectangle(canvas, fork, "red", 2)
+    renderCircle(canvas, fork, "red", 5 * Math.sqrt(fork.mass))
+    renderLineBetweenBodies(canvas, fork, body, "red")
   }
 }

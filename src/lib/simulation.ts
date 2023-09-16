@@ -278,7 +278,7 @@ export function update(body: Body, quad: Quad): Body {
   return addForceToBody(body, netXForce, netYForce)
 }
 
-const ELIMINATION_THRESHOLD = 0.5
+const ELIMINATION_THRESHOLD = 0.8
 export const eliminateOutliers = (quad: QuadBase) => (body: Body) => {
   const dx = quad.massX - body.massX
   const dy = quad.massY - body.massY

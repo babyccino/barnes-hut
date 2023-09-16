@@ -17,8 +17,8 @@ let TIME = 0
 let FRAME_COUNTER = 0
 let FRAME_SKIP = 15
 
-const X_MAX = 2500
-const Y_MAX = 2500
+const X_MAX = 5000
+const Y_MAX = 5000
 
 export default function Simulation({
   nodeCount,
@@ -97,7 +97,7 @@ export default function Simulation({
       )
       const focusNode = bodies[0]
 
-      canvas.clearRect(0, 0, 2500, 2500)
+      canvas.clearRect(0, 0, X_MAX, Y_MAX)
       bodiesRef.current = updateBodies(bodies, quad)
       drawBodies(canvas, bodiesRef.current)
 

@@ -49,8 +49,8 @@ function init2Galaxies(totalBodies: number): Body[] {
     return bodies
   }
 
-  const larger = galaxy((totalBodies / 5) * 4, 350.0, 400, 400, 10, 12)
-  const smaller = galaxy(totalBodies / 5, 300, 2200, 1600, -10, -12)
+  const larger = galaxy((totalBodies / 5) * 4, 350.0, 400 + 1250, 400 + 1250, 10, 12)
+  const smaller = galaxy(totalBodies / 5, 300, 2200 + 1250, 1600 + 1250, -10, -12)
   return interweaveArrays(larger, smaller)
 }
 export const GALAXY = init2Galaxies(MAX_GALAXY_SIZE)

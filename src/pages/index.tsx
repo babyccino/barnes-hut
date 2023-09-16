@@ -86,8 +86,9 @@ export default function Home(): JSX.Element {
     <main className="flex justify-end sm:w-1/2">
       {quadtreeState !== ComponentState.Mounted ? (
         <Simulation
-          className={`fixed w-full bottom-1/2 translate-y-1/2 sm:left-1/2 sm:max-w-[50%]
-            max-h-full ${quadtreeState === ComponentState.Mounting ? "fadeOut" : "fadeIn"}`}
+          className={`fixed h-full top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 sm:h-auto sm:w-full sm:-translate-x-1/4 ${
+            quadtreeState === ComponentState.Mounting ? "fadeOut" : "fadeIn"
+          }`}
           nodeCount={nodeCount}
           running={simRunning}
           renderCalculatedQuads={renderQuads}
